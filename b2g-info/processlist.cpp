@@ -78,9 +78,8 @@ ProcessList::main_process()
   for (vector<Process*>::const_iterator it = processes.begin();
        it != processes.end(); ++it) {
 
-    // The api-daemon and updater are never considered as the main process.
-    if ((*it)->exe() == "/data/local/service/api-daemon/api-daemon" ||
-        (*it)->exe() == "/data/local/service/updater/updater-daemon") {
+    // The api-daemon is not considered as the main process.
+    if ((*it)->exe() == "/system/bin/api-daemon") {
 	    continue;
     }
 
@@ -154,8 +153,7 @@ ProcessList::processes_classify()
   for (vector<Process*>::const_iterator it = processes.begin();
        it != processes.end(); ++it) {
     if ((*it)->exe() == "/system/b2g/b2g" ||
-	(*it)->exe() == "/data/local/service/api-daemon/api-daemon" ||
-	(*it)->exe() == "/data/local/service/updater/updater-daemon") {
+	(*it)->exe() == "/system/bin/api-daemon") {
       m_unordered_b2g_processes.push_back(*it);
       (*it)->set_lite_meminfo(false);
     } else if ((*it)->exe_exist()){
