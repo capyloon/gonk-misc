@@ -1,6 +1,5 @@
 import /init.logmanager.rc
 import /init.bluetooth.rc
-import /init.rilproxy.rc
 
 service fakeappops /system/bin/fakeappops
     class main
