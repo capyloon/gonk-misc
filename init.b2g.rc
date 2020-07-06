@@ -48,6 +48,7 @@ service updater-daemon /system/bin/updater-daemon.sh
 
 on post-fs-data
     mkdir /data/misc/radvd 0770 system system
+    mkdir /data/misc/tethering 0770 system system
     mkdir /data/misc/dhcp-6.8.2 0770 dhcp dhcp
     chown dhcp dhcp /data/misc/dhcp-6.8.2
 
