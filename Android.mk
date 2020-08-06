@@ -263,8 +263,8 @@ else
 	export PRODUCT_MANUFACTURER="$(PRODUCT_MANUFACTURER)" && \
 	export MOZ_DISABLE_LTO="$(MOZ_DISABLE_LTO)" && \
 	export HOST_OS="$(HOST_OS)" && \
-	(cd gecko ; $(SHELL) build-b2g.sh) && \
-	(cd gecko ; $(SHELL) build-b2g.sh package) && \
+	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
+	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
 	mkdir -p $(@D) && cp $(GECKO_OBJDIR)/dist/b2g-*.tar.gz $@
 endif
 
