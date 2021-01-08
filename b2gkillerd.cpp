@@ -1,4 +1,5 @@
 #include <cutils/properties.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -85,6 +86,11 @@
       LOGE("ASSERT! ERROR: %s : %s:%d\n", \
            (msg), __FILE__, __LINE__); abort(); \
     } \
+  } while (0)
+
+#define ABORT(msg) do { \
+    LOGE("ABORT! ERROR: %s : %s:%d\n", \
+            (msg), __FILE__, __LINE__); abort();   \
   } while (0)
 
 #ifdef ANDROID
@@ -792,11 +798,26 @@ public:
  */
 class MemPressureWatcher {
 public:
+  // The socket path to receive incremental changes of hints.
+  constexpr static const char* HINT_SOCK_PATH = "/dev/socket/b2gkiller_hints";
+  // Names of supported hints.
+  // An ID is given to each names in their order in this array.
+  // For example, boot's ID is 0, and it is at bit 0 of mHints.
+  constexpr static const char* HINT_NAMES[] = {
+    "boot"
+  };
+  enum { HINT_BOOT = 0 };
+  // The hint file that contain all current hints.
+  // This file is updated by api-daemon.
+  constexpr static const char* HINT_FILE = "/data/local/tmp/prochints.dat";
+
   using Handler = std::function<bool(unsigned int)>;
 
   MemPressureWatcher()
     : mEventFd(-1),
-      mMemPressureLevelFd(-1) {
+      mMemPressureLevelFd(-1),
+      mHintFd(-1),
+      mHints(0) {
   }
 
   ~MemPressureWatcher() {
@@ -806,6 +827,9 @@ public:
     if (mMemPressureLevelFd >= 0) {
       close(mMemPressureLevelFd);
     }
+    if (mHintFd >= 0) {
+      close(mHintFd);
+    }
   }
 
   void Init(Handler&& aHandler) {
@@ -813,6 +837,19 @@ public:
     int efd = eventfd(0, eflags);
 
     int mpl_fd = open(MEMORY_PRESSURE_LEVEL_PATH, O_RDWR);
+
+    // Create a socket to receiveincremental update of hints from api-daemon.
+    remove(HINT_SOCK_PATH);
+    struct sockaddr_un addr;
+    bzero(&addr, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, HINT_SOCK_PATH, strlen(HINT_SOCK_PATH) + 1);
+    int hint_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    ASSERT(hint_fd >= 0, "Fail to create a socket for b2gkiller_hint");
+    int hint_bind_r = bind(hint_fd, (const struct sockaddr*)&addr, sizeof(addr));
+    ASSERT(hint_bind_r >= 0, "Fail to bind b2gkiller_hint");
+
+    LoadHintFile();
 
     char msg[256];
     snprintf(msg, 256, "%d %d " PRESSURE_LEVEL "\n", efd, mpl_fd);
@@ -824,12 +861,14 @@ public:
 
     mEventFd = efd;
     mMemPressureLevelFd = mpl_fd;
+    mHintFd = hint_fd;
 
     mHandler = std::move(aHandler);
   }
 
   void Watch() {
-    pollfd fds[1] = {{mEventFd, POLLIN, 0}};
+    pollfd fds[2] = {{mEventFd, POLLIN, 0},
+                     {mHintFd, POLLIN, 0}};
     int wait = 1000; // 1s
     while (poll(fds, 1, wait) >= 0) {
       uint64_t cnt = 0;
@@ -844,12 +883,141 @@ public:
       if (!cont) {
         break;
       }
+
+      if (fds[1].revents) {
+        // Handle incremental changes of hints.
+        //
+        // The received messages are in the format of
+        //
+        //    modify +add_hint_1 +add_hint_2 -remove_hint_3
+        // or
+        //    reset
+        //
+        // |modify| is to modify, adding or removing, hints following it.
+        // |reset| is to clear/remove all hints.
+        //
+        char buf[256];
+        int cp = recv(mHintFd, buf, 256, 0);
+        ASSERT(cp > 0, "Fail to receive a b2gkiller_hint message");
+        ASSERT(cp < 256, "The received message from b2gkiller_hint is too big (> 255)");
+        buf[cp] = 0;
+        if (strncmp(buf, "modify ", 7) == 0) {
+          char* savedptr = nullptr;
+          char* ptr;
+          while ((ptr = strtok_r(buf + 7, " ", &savedptr)) != nullptr) {
+            switch(ptr[0]) {
+            case '+':
+              {
+                auto hintid = get_hint_id(ptr + 1);
+                ASSERT(hintid >= 0, "Unknown hint name");
+                mHints |= 1 << hintid;
+              }
+              break;
+            case '-':
+              {
+                auto hintid = get_hint_id(ptr + 1);
+                ASSERT(hintid >= 0, "Unknown hint name");
+                mHints &= ~(1 << hintid);
+              }
+              break;
+            default:
+              ABORT("Invalid b2gkiller_hint operator (+/-)");
+            }
+          }
+        } else if (strcmp(buf, "reset") == 0) {
+          mHints = 0;
+        } else {
+          ABORT("Invalid b2gkiller_hint message");
+        }
+      }
     }
   }
 
+  uint32_t GetHintFlags() {
+    return mHints;
+  }
+
 private:
+
+  int get_hint_id(const char* hint) {
+    int n = sizeof(HINT_NAMES) / sizeof(HINT_NAMES[0]);
+    for (int i = 0; i < n; i++) {
+      if (strcmp(HINT_NAMES[i], hint) == 0) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Load hints from the hint file.
+   *
+   * Api-daemon will send incremental changes through a socket when
+   * there is a new hints added/removed.  However, when b2gkillerd is
+   * just up, it needs to know what are the current hints.  Api-daemon
+   * always update the hint file to contain latest hints.  B2gkillerd
+   * whould read hints from this file once its socket for incremental
+   * changes has been created.
+   *
+   * Hints are used to modify behavior of b2gkillerd. For example, we
+   * want b2gkillerd to behave different when b2g is booting.
+   */
+  void LoadHintFile() {
+    std::unique_ptr<FILE, int(*)(FILE*)> fp(fopen(HINT_FILE, "r"), fclose);
+    if (fp == nullptr) {
+      return;
+    }
+
+    mHints = 0;
+
+    char buf[256];
+    int cp;
+    int begin = 0;
+    while ((cp = fread(buf + begin,
+                       1,
+                       sizeof(buf) - 1 - begin, fp.get())) > 0) {
+      int end = begin + cp;
+      // Skip last token if there is no any space after it.
+      // Because, we never know if the last token is completed.
+      while (end > 0 && !isspace(buf[end - 1])) {
+        end--;
+      }
+      if (end <= 0) {
+        break;
+      }
+      buf[end - 1] = 0;
+
+      char* savedptr = nullptr;
+      char* ptr;
+      while ((ptr = strtok_r(buf + 7, " ", &savedptr)) != nullptr) {
+        auto hintid = get_hint_id(ptr);
+        ASSERT(hintid >= 0, "Unknown hint name");
+        mHints |= 1 << hintid;
+      }
+
+      int mvsz = begin + cp - end;
+      if (mvsz) {
+        // Move the skept token to the begining of the buffer.
+        memmove(buf, buf + end, mvsz);
+      }
+      begin = mvsz;
+    }
+    if (begin > 0) {
+      // Handle the skept token.
+      buf[begin] = 0;
+      auto hintid = get_hint_id(buf);
+      ASSERT(hintid >= 0, "Unknown hint name");
+      mHints |= 1 << hintid;
+    }
+  }
+
   int mEventFd;
   int mMemPressureLevelFd;
+  // The FD of the socket that is used to receive incremental changes
+  // of hints.
+  int mHintFd;
+  // Values of all boolean hints
+  uint32_t mHints;
   Handler mHandler;
 };
 
@@ -992,6 +1160,9 @@ void WatchMemPressure() {
           ProcessKiller::KillOneProc(HIGH_SWAP_FOREGROUND);
         }
       }
+    } else if (watcher.GetHintFlags() & MemPressureWatcher::HINT_BOOT) {
+      // B2g is booting, don't kill any process and skip all memory
+      // pressure events.
     } else {
       mpcounter->Add(cnt);
       double mem_pressure_avg = mpcounter->Average();
