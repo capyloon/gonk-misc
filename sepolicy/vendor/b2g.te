@@ -5,9 +5,14 @@ allow b2g hal_vibrator_hwservice:hwservice_manager find;
 allow b2g wpa_data_file:dir rw_dir_perms;
 allow b2g wpa_data_file:file rw_file_perms;
 allow b2g hal_wifi_hostapd_hwservice:hwservice_manager find;
+allow b2g ims_service:service_manager find;
+
+allow b2g data_tzstorage_file:dir create_dir_perms;
+allow b2g data_tzstorage_file:file create_file_perms;
 allow b2g hostapd_data_file:dir create_dir_perms;
 allow b2g hostapd_data_file:file create_file_perms;
-
+allow b2g wpa_data_file:dir rw_dir_perms;
+allow b2g wpa_data_file:file rw_file_perms;
 binder_call(b2g, hal_configstore_default)
 binder_call(b2g, hal_power_default)
 binder_call(b2g, hal_graphics_allocator_default)

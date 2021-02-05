@@ -23,6 +23,7 @@ allow bluetoothd binder_device:chr_file rw_file_perms;
 allow bluetoothd keystore_service:service_manager find;
 
 allow bluetoothd system_file:file r_file_perms;
+allow bluetoothd self:tcp_socket create_stream_socket_perms;
 
 # below rules are adapted from system/sepolicy/private/bluetooth.te
 
@@ -66,6 +67,7 @@ set_prop(bluetoothd, bluetooth_audio_hal_prop)
 set_prop(bluetoothd, bluetooth_prop)
 get_prop(bluetoothd, default_prop)
 get_prop(bluetoothd, system_prop)
+get_prop(bluetoothd, exported_bluetooth_prop)
 get_prop(bluetoothd, exported3_default_prop)
 
 allow bluetoothd audioserver_service:service_manager find;

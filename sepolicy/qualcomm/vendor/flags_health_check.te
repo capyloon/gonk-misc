@@ -1,0 +1,3 @@
+get_prop(flags_health_check, bluetooth_prop);
+get_prop(flags_health_check, boottime_prop);
+get_prop(flags_health_check, bpf_progs_loaded_prop);
