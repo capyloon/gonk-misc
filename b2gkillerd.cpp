@@ -339,7 +339,7 @@ private:
   bool UpdateStatus() {
     char status_fn[64];
     snprintf(status_fn, 64, "/proc/%d/status", mPid);
-    FILE* fo = fopen(status_fn, "r");
+    std::unique_ptr<FILE, int(*)(FILE*)> fo(fopen(status_fn, "r"), fclose);
     if (fo == nullptr) {
       mValid = false;
       return false;
@@ -347,7 +347,7 @@ private:
 
     size_t sz = 128;
     char *buf = (char*)malloc(sz);
-    while (getline(&buf, &sz, fo) >= 0) {
+    while (getline(&buf, &sz, fo.get()) >= 0) {
       char *saveptr;
       char *field = strtok_r(buf, " \t\n:", &saveptr);
       if (strcmp(field, "VmSize") == 0) {
@@ -377,7 +377,7 @@ private:
   bool UpdateSmaps() {
     char status_fn[64];
     snprintf(status_fn, 64, "/proc/%d/smaps", mPid);
-    FILE* fo = fopen(status_fn, "r");
+    std::unique_ptr<FILE, int(*)(FILE*)> fo(fopen(status_fn, "r"), fclose);
     if (fo == nullptr) {
       mValid = false;
       return false;
@@ -390,7 +390,7 @@ private:
 
     size_t sz = 128;
     char *buf = (char*)malloc(sz);
-    while (getline(&buf, &sz, fo) >= 0) {
+    while (getline(&buf, &sz, fo.get()) >= 0) {
       char *saveptr;
       char *field = strtok_r(buf, " \t\n:", &saveptr);
       if (strcmp(field, "Shared_Clean") == 0) {
@@ -702,6 +702,7 @@ public:
     int cp = 0;
     cp = write(cfd, msg, strlen(msg));
     ASSERT(cp >= 0, "Can not write to the event control");
+    close(cfd);
 
     mEventFd = efd;
     mMemPressureLevelFd = mpl_fd;
