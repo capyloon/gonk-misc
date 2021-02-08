@@ -78,8 +78,8 @@ on boot
     setprop ro.b2gkillerd.debug false
     setprop ro.b2gkillerd.mem_pressure_high_threshold "60"
     setprop ro.b2gkillerd.mem_pressure_low_threshold "40"
-    setprop ro.b2gkillerd.gc_cc_max "59"
-    setprop ro.b2gkillerd.gc_cc_min "50"
+    setprop ro.b2gkillerd.gc_cc_max "40"
+    setprop ro.b2gkillerd.gc_cc_min "30"
     setprop ro.b2gkillerd.dirty_mem_weight "0.2"
     setprop ro.b2gkillerd.swapped_mem_weight "0.5"
     setprop ro.b2gkillerd.min_kick_interval "5.5"

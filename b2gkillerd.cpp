@@ -115,8 +115,8 @@ static double mem_pressure_low_threshold = 40.0;
 
 // Trigger GC/CC only when the memory pressure is between max and min
 // threshold below.
-static double gc_cc_max = 2.5;
-static double gc_cc_min = 1.5;
+static double gc_cc_max = 40.0;
+static double gc_cc_min = 30.0;
 
 /**
   * Dirty memory have to be written out before reclaiming it while
@@ -949,10 +949,10 @@ main() {
   property_get("ro.b2gkillerd.mem_pressure_high_threshold", buf, "60.0");
   mem_pressure_high_threshold = atof(buf);
 
-  property_get("ro.b2gkillerd.gc_cc_max", buf, "2.5");
+  property_get("ro.b2gkillerd.gc_cc_max", buf, "40.0");
   gc_cc_max = atof(buf);
 
-  property_get("ro.b2gkillerd.gc_cc_min", buf, "1.5");
+  property_get("ro.b2gkillerd.gc_cc_min", buf, "30.0");
   gc_cc_min = atof(buf);
 
   property_get("ro.b2gkillerd.dirty_mem_weight", buf, "0.2");
