@@ -110,7 +110,8 @@
 #define MEMINFO_PATH "/proc/meminfo"
 #define MEMINFO_FIELD_COUNT 9
 
-static double mem_pressure_threshold = 3.0;
+static double mem_pressure_high_threshold = 60.0;
+static double mem_pressure_low_threshold = 40.0;
 
 // Trigger GC/CC only when the memory pressure is between max and min
 // threshold below.
@@ -123,6 +124,13 @@ static double gc_cc_min = 1.5;
   * So, we have to weigh dirty memory differently.
   */
 static double dirty_mem_weight = 0.2;
+
+enum KilleeType {
+  HIGH_SWAP_BACKGROUND,
+  HIGH_SWAP_TRY_TO_KEEP,
+  BACKGROUND,
+  TRY_TO_KEEP
+};
 
 /**
   * For the case of zram, swapped pages take memory too.  They are
@@ -586,7 +594,7 @@ class ProcessKiller {
     aProcs->UpdateInfo();
   }
 
-  static double ProcInfoKillScore(const ProcessInfo& aPInfo, bool aForcePurged) {
+  static double ProcInfoKillScore(const ProcessInfo& aPInfo, bool aSwapSensitive) {
     // Prefer the processes that has more clean private pages over
     // processes that has dirty pages sicne dirty ones should be
     // written out before using it.
@@ -597,7 +605,7 @@ class ProcessKiller {
                     aPInfo.mPrivateDirty * dirty_mem_weight;
 
     // Prefer the higher SWAP space consumer to be killed.
-    if (aForcePurged) {
+    if (aSwapSensitive) {
       score  += aPInfo.mVmSwap * high_swapped_mem_weight;
     } else {
       score  += aPInfo.mVmSwap * swapped_mem_weight;
@@ -606,17 +614,21 @@ class ProcessKiller {
     return score;
   }
 
-  static int _FindBestProcToKillOpt(ProcessList* aProcs,
-                                    bool aTryToKeep /* skip try_to_keep */,
-                                    bool aForcePurged) {
+  static int FindBestProcToKill(ProcessList* aProcs, KilleeType aType) {
     int best = -1;
     double best_score = 0.0;
+    bool swapSensetive = (aType == HIGH_SWAP_BACKGROUND) ||
+                         (aType == HIGH_SWAP_TRY_TO_KEEP);
     for (auto& proc : *aProcs) {
       if (aProcs->HasFG(proc.GetPid()) ||
-          (aTryToKeep && aProcs->HasTryToKeep(proc.GetPid()))) {
+          (!(aProcs->HasTryToKeep(proc.GetPid()) && (aType == TRY_TO_KEEP)) &&
+           !(aProcs->HasTryToKeep(proc.GetPid()) && (aType == HIGH_SWAP_TRY_TO_KEEP)) &&
+           !(aProcs->HasBG(proc.GetPid()) && (aType == BACKGROUND)) &&
+           !(aProcs->HasBG(proc.GetPid()) && (aType == HIGH_SWAP_BACKGROUND)))) {
         continue;
       }
-      double score = ProcInfoKillScore(proc, aForcePurged);
+
+      double score = ProcInfoKillScore(proc, swapSensetive);
       if (score > best_score) {
         best = proc.GetPid();
         best_score = score;
@@ -626,35 +638,26 @@ class ProcessKiller {
     return best;
   }
 
-  static int FindBestProcToKill(ProcessList* aProcs, bool aForcePurged) {
-    // Skip try_to_keep processes.
-    auto r = _FindBestProcToKillOpt(aProcs, true, aForcePurged);
-    if (r < 0) {
-      // Include try_to_keep processes too.
-      r = _FindBestProcToKillOpt(aProcs, false, aForcePurged);
-    }
-    return r;
-  }
-
 public:
   /**
-   * Choice one of processes and kill it.
+   * Choice one of processes and kill it. Return true if kill successfully.
    *
    * Basing on the information from cgroup filesystem, it pick one of
    * background process to kill.  It will kill one of background
    * processes other than try-to-keep ones, unless only try-to-keeps
    * ones are left.
    */
-  static void KillOneProc(bool aForcePurged) {
+  static bool KillOneProc(KilleeType aType) {
     ProcessList procs;
     FillB2GProcessList(&procs);
-    int pid = FindBestProcToKill(&procs, aForcePurged);
+    int pid = FindBestProcToKill(&procs, aType);
     if (pid < 0) {
-      LOGD("There is no any process to kill!\n");
-      return;
+      LOGD("There is no proper process to kill!\n");
+      return false;
     }
     kill(pid, SIGKILL);
     LOGI("Kill pid %d for memory pressure\n", pid);
+    return true;
   }
 };
 
@@ -845,7 +848,7 @@ void WatchMemPressure() {
   LOGD("The half life of the memory pressure counter is %fs.\n",
                mpcounter->HalfLifePeriod());
   LOGD("Kill processes once the counter is over %f.\n\n",
-               mem_pressure_threshold);
+               mem_pressure_low_threshold);
 
   MemPressureWatcher watcher;
 
@@ -855,7 +858,6 @@ void WatchMemPressure() {
    */
   auto killer = [&](unsigned int cnt) -> bool {
     union meminfo mi;
-    bool already_purged = false;
 
     if (MemInfoParse(&mi) < 0) {
       LOGI("Failed to get free memory to parse meminfo!");
@@ -869,26 +871,34 @@ void WatchMemPressure() {
       LOGD("mi.field.free_swap: %" PRIi64, mi.field.free_swap);
       LOGD("mi.field.total_swap: %" PRIi64, mi.field.total_swap);
 
-      ProcessKiller::KillOneProc(true);
-      already_purged = true;
-    }
+      if (!ProcessKiller::KillOneProc(HIGH_SWAP_BACKGROUND)) {
+        ProcessKiller::KillOneProc(HIGH_SWAP_TRY_TO_KEEP);
+      }
+    } else {
+      mpcounter->Add(cnt);
+      double mem_pressure_avg = mpcounter->Average();
+      bool memory_too_low = mem_pressure_avg > mem_pressure_low_threshold;
 
-    mpcounter->Add(cnt);
-    bool memory_too_low = mpcounter->Average() > mem_pressure_threshold;
-    if (memory_too_low && !already_purged) {
-      ProcessKiller::KillOneProc(false);
-      LOGD("memory pressure counter %u, average %f\n",
-                    cnt, mpcounter->Average());
-    }
+      if (memory_too_low && (ProcessKiller::KillOneProc(BACKGROUND))) {
+        LOGD("memory pressure counter %u, average %f, "
+             "killing background app successully\n", cnt, mem_pressure_avg);
+      } else if ((mem_pressure_avg > mem_pressure_high_threshold) &&
+                 (ProcessKiller::KillOneProc(TRY_TO_KEEP))) {
+        LOGD("memory pressure counter %u, average %f, "
+             "killing try_to_keep app successfully\n", cnt, mem_pressure_avg);
+      } else {
+        LOGD("memory pressure counter %u, average %f\n", cnt, mem_pressure_avg);
+      }
 
-    bool do_gc_cc = (mpcounter->Average() >= gc_cc_min &&
-                     mpcounter->Average() <= gc_cc_max);
-    if (do_gc_cc) {
-      GCCCKicker::Kick();
-    }
+      bool do_gc_cc = (mem_pressure_avg >= gc_cc_min &&
+                       mem_pressure_avg <= gc_cc_max);
+      if (do_gc_cc) {
+        GCCCKicker::Kick();
+      }
 
-    ASSERT(!do_gc_cc || !memory_too_low,
-           "should not do both GC/CC and killing a process");
+      ASSERT(!do_gc_cc || !memory_too_low,
+             "should not do both GC/CC and killing a process");
+    }
 
     return true;
   };
@@ -933,8 +943,11 @@ main() {
   debugging_b2g_killer = property_get_bool("ro.b2gkillerd.debug", false);
 
   char buf[PROPERTY_VALUE_MAX] = {'\0'};
-  property_get("ro.b2gkillerd.mem_pressure_threshold", buf, "3.0");
-  mem_pressure_threshold = atof(buf);
+  property_get("ro.b2gkillerd.mem_pressure_low_threshold", buf, "40.0");
+  mem_pressure_low_threshold = atof(buf);
+
+  property_get("ro.b2gkillerd.mem_pressure_high_threshold", buf, "60.0");
+  mem_pressure_high_threshold = atof(buf);
 
   property_get("ro.b2gkillerd.gc_cc_max", buf, "2.5");
   gc_cc_max = atof(buf);
@@ -954,11 +967,14 @@ main() {
   property_get("ro.b2gkillerd.swap_free_threshold", buf, "0.25");
   swap_free_threshold = atof(buf);
 
-  LOGD("Reading config: mem_pressure_threshold: %f, gc_cc_max: %f,"
-       "gc_cc_min: %f, dirty_mem_weight: %f, swapped_mem_weight: %f,"
-       "minkickinterval: %f, swap_free_threshold: %f  \n", mem_pressure_threshold, gc_cc_max,
-       gc_cc_min, dirty_mem_weight, swapped_mem_weight, min_kick_interval, swap_free_threshold);
-  #endif
+  LOGD("Reading config: mem_pressure_low_threshold: %f, "
+       "mem_pressure_high_threshold: %fgc_cc_max: %f, gc_cc_min: %f, "
+       "dirty_mem_weight: %f, swapped_mem_weight: %f,minkickinterval: %f "
+       "swapped_mem_weight: %f\n",
+       mem_pressure_low_threshold, mem_pressure_high_threshold, gc_cc_max,
+       gc_cc_min, dirty_mem_weight, swapped_mem_weight, min_kick_interval,
+       swap_free_threshold);
+ #endif
 
   if (CheckCgroups()) {
     return 255;
