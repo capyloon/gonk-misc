@@ -47,6 +47,8 @@ allow b2g wigig_hostapd_socket:file create_file_perms;
 allow b2g wpa_data_file:dir create_file_perms;
 allow b2g wpa_data_file:file create_file_perms;
 allow b2g wpa_data_file:sock_file create_file_perms;
+allow b2g ims_service:service_manager find;
+allow b2g metrics-daemon:unix_stream_socket connectto;
 
 set_prop(b2g, fm_prop)
 set_prop(b2g, vendor_audio_prop)
@@ -57,6 +59,9 @@ binder_call(b2g, ims)
 binder_call(ims, b2g)
 binder_call(b2g, rild)
 binder_call(rild, b2g)
+binder_call(b2g, hal_gnss_qti)
+binder_call(b2g, qti_telephony)
+binder_call(qti_telephony, b2g)
 
 r_dir_file(b2g, data_qtee_file)
 r_dir_file(b2g, display_vendor_data_file)

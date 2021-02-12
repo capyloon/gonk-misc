@@ -209,8 +209,6 @@ allow b2g vold:file r_file_perms;
 allow b2g block_device:dir r_dir_perms;
 allow b2g block_device:blk_file r_file_perms;
 allow b2g rtc_device:chr_file rw_file_perms;
-#Allow b2g_telephony data collector to connect with metrics-daemon
-allow b2g metrics-daemon:unix_stream_socket connectto;
 allow b2g unlabeled:dir create_dir_perms;
 allow b2g unlabeled:file create_file_perms;
 
