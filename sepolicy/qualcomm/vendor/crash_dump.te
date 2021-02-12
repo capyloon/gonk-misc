@@ -1,7 +1,0 @@
-#============= crash_dump ==============
-get_prop(crash_dump, bluetooth_a2dp_offload_prop);
-get_prop(crash_dump, bluetooth_audio_hal_prop);
-get_prop(crash_dump, bluetooth_prop);
-get_prop(crash_dump, hwservicemanager_prop);
-get_prop(crash_dump, vendor_audio_prop);
-allow crash_dump runtime_event_log_tags_file:file getattr;

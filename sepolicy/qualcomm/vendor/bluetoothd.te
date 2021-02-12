@@ -1,2 +1,0 @@
-get_prop(bluetoothd, vendor_audio_prop)
-hal_client_domain(bluetoothd, hal_btconfigstore);
