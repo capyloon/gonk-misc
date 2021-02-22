@@ -1,0 +1,3 @@
+#############################
+# mount point for interal storage.
+/mnt/vendor/usbmsc(/.*)?           u:object_r:b2g_data_file:s0

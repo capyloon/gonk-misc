@@ -307,6 +307,7 @@ allow b2g unencrypted_data_file:dir create_dir_perms;
 allow b2g unencrypted_data_file:file create_file_perms;
 allow b2g textclassifier_data_file:dir create_dir_perms;
 allow b2g textclassifier_data_file:file create_file_perms;
+allow b2g tombstoned_crash_socket:sock_file rw_file_perms;
 allow b2g update_engine_data_file:dir create_dir_perms;
 allow b2g update_engine_data_file:file create_file_perms;
 allow b2g update_engine_log_data_file:dir create_dir_perms;

@@ -1,7 +1,9 @@
 # Filesystem types
 
 # File types
+# Default type for anything inside /data/local/service
+type api_data_file, file_type, data_file_type;
 # Default type for anything inside /data/b2g
 type b2g_data_file, file_type, data_file_type;
-type api_data_file, file_type, data_file_type;
+# Default type for anything inside /data/misc/radvd
 type radvd_data_file, file_type, data_file_type;
