@@ -28,7 +28,7 @@
   if (debugging_b2g_killer) {                                            \
     __android_log_print(ANDROID_LOG_INFO, "b2gkillerd", ## __VA_ARGS__); \
   }
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "b2gkillerd", ## __VA_ARGS__);
+#define LOGI(...) __android_log_buf_print(LOG_ID_EVENTS, ANDROID_LOG_INFO, "b2gkillerd", ## __VA_ARGS__);
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "b2gkillerd", ## __VA_ARGS__);
 #else
 #define LOGD(...) printf(## __VA_ARGS__)
@@ -109,6 +109,7 @@
 #define PRESSURE_LEVEL "medium"
 #define MEMINFO_PATH "/proc/meminfo"
 #define MEMINFO_FIELD_COUNT 9
+#define PID_FILE "/data/local/tmp/b2gkillerd.pid"
 
 static double mem_pressure_high_threshold = 60.0;
 static double mem_pressure_low_threshold = 40.0;
@@ -614,8 +615,9 @@ class ProcessKiller {
     return score;
   }
 
-  static int FindBestProcToKill(ProcessList* aProcs, KilleeType aType) {
-    int best = -1;
+  static const ProcessInfo*
+  FindBestProcToKill(ProcessList* aProcs, KilleeType aType) {
+    const ProcessInfo *best = nullptr;
     double best_score = 0.0;
     bool swapSensetive = (aType == HIGH_SWAP_BACKGROUND) ||
                          (aType == HIGH_SWAP_TRY_TO_KEEP);
@@ -630,7 +632,7 @@ class ProcessKiller {
 
       double score = ProcInfoKillScore(proc, swapSensetive);
       if (score > best_score) {
-        best = proc.GetPid();
+        best = &proc;
         best_score = score;
       }
     }
@@ -650,13 +652,29 @@ public:
   static bool KillOneProc(KilleeType aType) {
     ProcessList procs;
     FillB2GProcessList(&procs);
-    int pid = FindBestProcToKill(&procs, aType);
-    if (pid < 0) {
+    auto proc = FindBestProcToKill(&procs, aType);
+    if (proc == nullptr) {
       LOGD("There is no proper process to kill!\n");
       return false;
     }
+    int pid = proc->GetPid();
+
+    // Read app name
+    char commpath[64];
+    snprintf(commpath, 64, "/proc/%d/comm", pid);
+    std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(commpath, "r"), fclose);
+    ASSERT(commfp, "fail to open /proc/<pid>/comm");
+    char appname[64];
+    int cp = fread(appname, 63, 1, commfp.get());
+    ASSERT(cp > 0, "fail to read app name");
+    appname[cp] = 0;
+
     kill(pid, SIGKILL);
-    LOGI("Kill pid %d for memory pressure\n", pid);
+
+    // XXX: Don't touch line before talking with the data team.
+    //      They want the format of this log to be fixed.
+    LOGI("Kill proc %s (%d) for memory pressure:%d:%ld/%ld\n",
+         appname, pid, (int)aType, proc->mVmRSS, proc->mVmSize);
     return true;
   }
 };
@@ -979,6 +997,13 @@ main() {
   if (CheckCgroups()) {
     return 255;
   }
+
+  // Create/or update the PID file.
+  auto pid_fp = fopen(PID_FILE, "w+");
+  ASSERT(pid_fp, "Fail to create PID file " PID_FILE "\n");
+  int cp = fprintf(pid_fp, "%d\n", getpid());
+  ASSERT(cp > 0, "Fail to write to the PID file " PID_FILE "\n");
+  fclose(pid_fp);
 
   WatchMemPressure();
 
