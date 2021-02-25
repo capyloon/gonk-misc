@@ -141,7 +141,7 @@ int cmd_gralloc(int argc, char **argv) {
           uint_t gb_amount = reply.readUint32();
           LOGD("gb_amount: %u\n", gb_amount);
           for (int i = 0; i < gb_amount; i++) {
-              LOGD("gralloc: index=%u", reply.readUint32());
+              LOGD("gralloc: index=%llu", reply.readUint64());
           }
         }
         break;
