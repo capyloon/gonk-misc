@@ -665,7 +665,7 @@ public:
     std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(commpath, "r"), fclose);
     ASSERT(commfp, "fail to open /proc/<pid>/comm");
     char appname[64];
-    int cp = fread(appname, 63, 1, commfp.get());
+    int cp = fread(appname, 1, 63, commfp.get());
     ASSERT(cp > 0, "fail to read app name");
     appname[cp] = 0;
 
