@@ -17,6 +17,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <utils/String8.h>
+#include <inttypes.h>
 
 #include "GfxDebugger_defs.h"
 
@@ -141,7 +142,7 @@ int cmd_gralloc(int argc, char **argv) {
           uint_t gb_amount = reply.readUint32();
           LOGD("gb_amount: %u\n", gb_amount);
           for (int i = 0; i < gb_amount; i++) {
-              LOGD("gralloc: index=%llu", reply.readUint64());
+              LOGD("gralloc: index=%" PRIi64, reply.readUint64());
           }
         }
         break;
