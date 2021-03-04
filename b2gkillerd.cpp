@@ -28,7 +28,7 @@
   if (debugging_b2g_killer) {                                            \
     __android_log_print(ANDROID_LOG_INFO, "b2gkillerd", ## __VA_ARGS__); \
   }
-#define LOGI(...) __android_log_buf_print(LOG_ID_EVENTS, ANDROID_LOG_INFO, "b2gkillerd", ## __VA_ARGS__);
+#define LOGI(...) __android_log_buf_print(LOG_ID_SYSTEM, ANDROID_LOG_INFO, "b2gkillerd", ## __VA_ARGS__);
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "b2gkillerd", ## __VA_ARGS__);
 #else
 #define LOGD(...) printf(## __VA_ARGS__)
