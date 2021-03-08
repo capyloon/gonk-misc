@@ -11,6 +11,7 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 
+#include <ctype.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
@@ -667,6 +668,10 @@ public:
     char appname[64];
     int cp = fread(appname, 1, 63, commfp.get());
     ASSERT(cp > 0, "fail to read app name");
+    // Remove trailing spaces
+    while (cp > 0 && isspace(appname[cp - 1])) {
+      cp--;
+    }
     appname[cp] = 0;
 
     kill(pid, SIGKILL);
