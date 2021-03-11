@@ -392,23 +392,15 @@ Process::swap_kb()
   return m_swap_kb;
 }
 
-// Currently, we have 3 types, they are "bg", "bg/try_to_keep" and "fg".
-#define PRIORITY_TYPES 3
+// Currently, we have 4 types, they are "default", "bg", "bg/try_to_keep" and "fg".
+#define PRIORITY_TYPES 4
 
 const string&
 Process::priority()
 {
-  const char* type[PRIORITY_TYPES] = {"bg", "bg/try_to_keep", "fg"};
+  const char* type[PRIORITY_TYPES] = {"default", "bg", "bg/try_to_keep", "fg"};
   char filename[64];
   m_priority = "unknown";
-
-  // The list we don't assign specical priority
-  if (m_name == "b2g" ||
-      m_name == "api-daemon" ||
-      m_name == "updater-daemon" ||
-      m_name == "forkserver") {
-    m_priority = "default";
-  }
 
   for (int i = 0; i < PRIORITY_TYPES; i++) {
     if (m_priority != "unknown") {
