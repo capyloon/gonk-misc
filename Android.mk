@@ -234,6 +234,7 @@ GECKO_LIB_DEPS := \
 	libhidlbase.so \
 	libvold_binder_shared.so \
 	libttspico.so \
+	libnetdbpf.so \
 	$(NULL)
 
 # For APEX_MODULE_LIBS
