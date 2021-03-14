@@ -665,14 +665,20 @@ public:
     snprintf(commpath, 64, "/proc/%d/comm", pid);
     std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(commpath, "r"), fclose);
     ASSERT(commfp, "fail to open /proc/<pid>/comm");
-    char appname[64];
-    int cp = fread(appname, 1, 63, commfp.get());
-    ASSERT(cp > 0, "fail to read app name");
-    // Remove trailing spaces
-    while (cp > 0 && isspace(appname[cp - 1])) {
-      cp--;
+    char _appname[64];
+    const char *appname;
+    if (commfp) {
+      int cp = fread(_appname, 1, 63, commfp.get());
+      ASSERT(cp > 0, "fail to read app name");
+      // Remove trailing spaces
+      while (cp > 0 && isspace(_appname[cp - 1])) {
+        cp--;
+      }
+      _appname[cp] = 0;
+      appname = _appname;
+    } else {
+      appname = "<unknown>";
     }
-    appname[cp] = 0;
 
     kill(pid, SIGKILL);
 
