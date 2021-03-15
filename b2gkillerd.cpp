@@ -130,6 +130,7 @@ static double dirty_mem_weight = 0.2;
 enum KilleeType {
   HIGH_SWAP_BACKGROUND,
   HIGH_SWAP_TRY_TO_KEEP,
+  HIGH_SWAP_FOREGROUND,
   BACKGROUND,
   TRY_TO_KEEP
 };
@@ -148,7 +149,8 @@ static double high_swapped_mem_weight = 1.5;
 static double min_kick_interval = 0.5;
 
 // Available swap free threshold.
-static double swap_free_threshold = 0.25;
+static double swap_free_soft_threshold = 0.25;
+static double swap_free_hard_threshold = 0.20;
 
 static bool debugging_b2g_killer = false;
 
@@ -616,18 +618,29 @@ class ProcessKiller {
     return score;
   }
 
+  static bool
+  IsTargetKillee(const ProcessInfo& aProc, ProcessList *aProcs, KilleeType aType) {
+    if ((aProcs->HasTryToKeep(aProc.GetPid()) && (aType == TRY_TO_KEEP)) ||
+        (aProcs->HasTryToKeep(aProc.GetPid()) && (aType == HIGH_SWAP_TRY_TO_KEEP)) ||
+        (aProcs->HasBG(aProc.GetPid()) && (aType == BACKGROUND)) ||
+        (aProcs->HasBG(aProc.GetPid()) && (aType == HIGH_SWAP_BACKGROUND)) ||
+        (aProcs->HasFG(aProc.GetPid()) && (aType == HIGH_SWAP_FOREGROUND))) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   static const ProcessInfo*
   FindBestProcToKill(ProcessList* aProcs, KilleeType aType) {
     const ProcessInfo *best = nullptr;
     double best_score = 0.0;
     bool swapSensetive = (aType == HIGH_SWAP_BACKGROUND) ||
+                         (aType == HIGH_SWAP_FOREGROUND) ||
                          (aType == HIGH_SWAP_TRY_TO_KEEP);
+    LOGI("Try to kill process with priority %d\n", aType);
     for (auto& proc : *aProcs) {
-      if (aProcs->HasFG(proc.GetPid()) ||
-          (!(aProcs->HasTryToKeep(proc.GetPid()) && (aType == TRY_TO_KEEP)) &&
-           !(aProcs->HasTryToKeep(proc.GetPid()) && (aType == HIGH_SWAP_TRY_TO_KEEP)) &&
-           !(aProcs->HasBG(proc.GetPid()) && (aType == BACKGROUND)) &&
-           !(aProcs->HasBG(proc.GetPid()) && (aType == HIGH_SWAP_BACKGROUND)))) {
+      if (!IsTargetKillee(proc, aProcs, aType)) {
         continue;
       }
 
@@ -893,14 +906,17 @@ void WatchMemPressure() {
 
     float swap_free_percent = (float) mi.field.free_swap / mi.field.total_swap;
 
-    if (swap_free_percent < swap_free_threshold) {
+    if (swap_free_percent < swap_free_soft_threshold) {
       // Swap too much, now purge time. Kill until we got more SWAP space.
       LOGI("SWAP free percentage is low, memory swap free percentage: %f\n", swap_free_percent);
       LOGD("mi.field.free_swap: %" PRIi64, mi.field.free_swap);
       LOGD("mi.field.total_swap: %" PRIi64, mi.field.total_swap);
 
       if (!ProcessKiller::KillOneProc(HIGH_SWAP_BACKGROUND)) {
-        ProcessKiller::KillOneProc(HIGH_SWAP_TRY_TO_KEEP);
+        if (!ProcessKiller::KillOneProc(HIGH_SWAP_TRY_TO_KEEP) &&
+            (swap_free_percent < swap_free_hard_threshold)) {
+          ProcessKiller::KillOneProc(HIGH_SWAP_FOREGROUND);
+        }
       }
     } else {
       mpcounter->Add(cnt);
@@ -992,16 +1008,19 @@ main() {
   property_get("ro.b2gkillerd.min_kick_interval", buf, "0.5");
   min_kick_interval = atof(buf);
 
-  property_get("ro.b2gkillerd.swap_free_threshold", buf, "0.25");
-  swap_free_threshold = atof(buf);
+  property_get("ro.b2gkillerd.swap_free_soft_threshold", buf, "0.25");
+  swap_free_soft_threshold = atof(buf);
+
+  property_get("ro.b2gkillerd.swap_free_hard_threshold", buf, "0.20");
+  swap_free_hard_threshold = atof(buf);
 
   LOGD("Reading config: mem_pressure_low_threshold: %f, "
        "mem_pressure_high_threshold: %fgc_cc_max: %f, gc_cc_min: %f, "
        "dirty_mem_weight: %f, swapped_mem_weight: %f,minkickinterval: %f "
-       "swapped_mem_weight: %f\n",
+       "swap_free_soft_threshold: %f, swap_free_hard_threshold: %f\n",
        mem_pressure_low_threshold, mem_pressure_high_threshold, gc_cc_max,
        gc_cc_min, dirty_mem_weight, swapped_mem_weight, min_kick_interval,
-       swap_free_threshold);
+       swap_free_soft_threshold, swap_free_hard_threshold);
  #endif
 
   if (CheckCgroups()) {
