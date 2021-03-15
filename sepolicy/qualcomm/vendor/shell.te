@@ -1,0 +1,4 @@
+#for tools/get_about_memory.py
+allow adbd qti_debugfs:file r_file_perms;
+allow shell qti_debugfs:dir r_dir_perms;
+allow shell qti_debugfs:file r_file_perms;

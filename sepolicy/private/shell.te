@@ -1,0 +1,5 @@
+#for tools/get_about_memory.py
+allow shell shell_data_file:sock_file create_file_perms;
+allow shell b2g_data_file:fifo_file rw_file_perms;
+allow shell sysfs_zram:dir r_dir_perms;
+allow shell sysfs_zram:file r_file_perms;

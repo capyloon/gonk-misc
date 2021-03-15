@@ -129,6 +129,7 @@ allow b2g shared_relro_file:dir rw_dir_perms;
 allow b2g shell_data_file:dir create_dir_perms;
 allow b2g shell_data_file:file create_file_perms;
 allow b2g shell_data_file:sock_file getattr;
+allow b2g shell_data_file:lnk_file create_file_perms;
 allow b2g socket_device:dir rw_dir_perms;
 allow b2g socket_device:sock_file create_file_perms;
 allow b2g sysfs:file rw_file_perms;
