@@ -235,6 +235,11 @@ allow b2g proc_net:file rw_file_perms;
 # config for dongle dhcp
 allow b2g dhcp_data_file:file unlink;
 
+# config for network statistics bpf library
+allow b2g fs_bpf:dir r_dir_perms;
+allow b2g fs_bpf:file r_file_perms;
+allow b2g bpfloader:bpf map_read;
+
 ###new sepolicy add in next
 allow b2g binder_device:chr_file rw_file_perms;
 allow b2g configfs:dir create_dir_perms;
