@@ -145,8 +145,6 @@ allow b2g system_wpa_socket:sock_file create_file_perms;
 allow b2g systemkeys_data_file:dir rw_dir_perms;
 allow b2g tmpfs:dir create_dir_perms;
 allow b2g tmpfs:file create_file_perms;
-allow b2g tombstone_data_file:dir rw_dir_perms;
-allow b2g tombstone_data_file:file create_file_perms;
 allow b2g ueventd:dir r_dir_perms;
 allow b2g ueventd:file r_file_perms;
 allow b2g vpn_data_file:dir rw_dir_perms;
@@ -313,7 +311,6 @@ allow b2g unencrypted_data_file:dir create_dir_perms;
 allow b2g unencrypted_data_file:file create_file_perms;
 allow b2g textclassifier_data_file:dir create_dir_perms;
 allow b2g textclassifier_data_file:file create_file_perms;
-allow b2g tombstoned_crash_socket:sock_file rw_file_perms;
 allow b2g update_engine_data_file:dir create_dir_perms;
 allow b2g update_engine_data_file:file create_file_perms;
 allow b2g update_engine_log_data_file:dir create_dir_perms;
@@ -382,7 +379,11 @@ wakelock_use(b2g)
 hal_client_domain(b2g, hal_allocator)
 
 allow b2g netd:unix_stream_socket connectto;
+allow b2g tombstoned:fd use;
 allow b2g tombstoned:unix_stream_socket connectto;
+allow b2g tombstoned_crash_socket:sock_file rw_file_perms;
+allow b2g tombstone_data_file:dir create_dir_perms;
+allow b2g tombstone_data_file:file create_file_perms;
 allowxperm b2g self:udp_socket ioctl ~SIOCATMARK;
 
 hal_client_domain(b2g, hal_gnss)
@@ -395,3 +396,9 @@ r_dir_file(b2g, server_configurable_flags_data_file)
 r_dir_file(b2g, storage_file)
 r_dir_file(b2g, staging_data_file)
 r_dir_file(b2g, sysfs_net)
+
+# other domains that interact with b2g domain in 3.0
+userdebug_or_eng(`
+  allow crash_dump b2g_data_file:dir r_dir_perms;
+  allow crash_dump b2g_data_file:file r_file_perms;
+')

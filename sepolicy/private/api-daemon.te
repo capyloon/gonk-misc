@@ -74,6 +74,8 @@ allow api-daemon sysfs:file w_file_perms;
 allow api-daemon sysfs_leds:dir rw_dir_perms;
 allow api-daemon sysfs_leds:file rw_file_perms;
 allow api-daemon config_gz:file { open read getattr };
+allow api-daemon logd:unix_stream_socket connectto;
+allow api-daemon logdr_socket:sock_file w_file_perms;
 allow api-daemon {
 proc
 proc_buddyinfo
