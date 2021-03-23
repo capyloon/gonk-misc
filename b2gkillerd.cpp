@@ -664,7 +664,6 @@ public:
     char commpath[64];
     snprintf(commpath, 64, "/proc/%d/comm", pid);
     std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(commpath, "r"), fclose);
-    ASSERT(commfp, "fail to open /proc/<pid>/comm");
     char _appname[64];
     const char *appname;
     if (commfp) {
