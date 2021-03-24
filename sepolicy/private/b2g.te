@@ -20,6 +20,8 @@ binder_call(b2g, cameraserver)
 binder_call(cameraserver, b2g)
 binder_call(mediaextractor, b2g)
 binder_call(b2g, system_suspend)
+binder_call(b2g, mediaswcodec)
+binder_call(mediaswcodec, b2g)
 
 # force SELinux to keep environment variables when calling
 # execve(plugin-container,...) to preserve LD_PRELOAD which is
