@@ -581,6 +581,12 @@ class ProcessKiller {
     ASSERT(fp != nullptr, "Can't open try_to_keep cgroup");
     while (getline(&line, &lsz, fp) > 0) {
       auto pid = atoi(line);
+      if (aProcs->HasProc(pid)) {
+        // Since b2gkillerd and procmanager are asynchronous,
+        // procmanager can change cgroup.procs inbetween readings
+        // here.  Remove previous added info to do our best.
+        aProcs->RemoveProc(pid);
+      }
       aProcs->AddTryToKeep(pid);
     }
     fclose(fp);
@@ -589,6 +595,15 @@ class ProcessKiller {
     ASSERT(fp != nullptr, "Can't open foreground cgroup");
     while (getline(&line, &lsz, fp) > 0) {
       auto pid = atoi(line);
+      if (aProcs->HasProc(pid)) {
+        // Since b2gkillerd and procmanager are asynchronous,
+        // procmanager can change cgroup.procs inbetween readings
+        // here.  Remove previous added info to do our best.
+        //
+        // FG is more important to previous groups, so adding to the
+        // FG group is prefered.
+        aProcs->RemoveProc(pid);
+      }
       aProcs->AddFG(pid);
     }
     fclose(fp);
