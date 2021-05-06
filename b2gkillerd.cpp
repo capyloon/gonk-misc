@@ -344,10 +344,38 @@ public:
     if (!success) {
       return false;
     }
+    success = UpdateComm();
+    if (!success) {
+      return false;
+    }
     return UpdateSmaps();
   }
 
 private:
+  bool UpdateComm() {
+    // Read app name
+    char commpath[64];
+    snprintf(commpath, 64, "/proc/%d/comm", mPid);
+    std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(commpath, "r"), fclose);
+    if (commfp == nullptr) {
+      mValid = false;
+      return false;
+    }
+
+    char _appname[64];
+    const char *appname;
+    int cp = fread(_appname, 1, 63, commfp.get());
+    ASSERT(cp > 0, "fail to read app name");
+    // Remove trailing spaces
+    while (cp > 0 && isspace(_appname[cp - 1])) {
+      cp--;
+    }
+    _appname[cp] = 0;
+    appname = _appname;
+    strncpy(mAppName, appname, 64);
+    return true;
+  }
+
   bool UpdateStatus() {
     char status_fn[64];
     snprintf(status_fn, 64, "/proc/%d/status", mPid);
@@ -440,6 +468,8 @@ public:
   long mSharedDirty;
   long mPrivateClean;
   long mPrivateDirty;
+
+  char mAppName[64];
 };
 
 
@@ -687,32 +717,12 @@ public:
       return false;
     }
     int pid = proc->GetPid();
-
-    // Read app name
-    char commpath[64];
-    snprintf(commpath, 64, "/proc/%d/comm", pid);
-    std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(commpath, "r"), fclose);
-    char _appname[64];
-    const char *appname;
-    if (commfp) {
-      int cp = fread(_appname, 1, 63, commfp.get());
-      ASSERT(cp > 0, "fail to read app name");
-      // Remove trailing spaces
-      while (cp > 0 && isspace(_appname[cp - 1])) {
-        cp--;
-      }
-      _appname[cp] = 0;
-      appname = _appname;
-    } else {
-      appname = "<unknown>";
-    }
-
     kill(pid, SIGKILL);
 
     // XXX: Don't touch line before talking with the data team.
     //      They want the format of this log to be fixed.
     LOGI("Kill proc %s (%d) for memory pressure:%d:%ld/%ld\n",
-         appname, pid, (int)aType, proc->mVmRSS, proc->mVmSize);
+         proc->mAppName, pid, (int)aType, proc->mVmRSS, proc->mVmSize);
     return true;
   }
 };
@@ -1031,7 +1041,7 @@ main() {
 
   LOGD("Reading config: mem_pressure_low_threshold: %f, "
        "mem_pressure_high_threshold: %fgc_cc_max: %f, gc_cc_min: %f, "
-       "dirty_mem_weight: %f, swapped_mem_weight: %f,minkickinterval: %f "
+       "dirty_mem_weight: %f, swapped_mem_weight: %f, minkickinterval: %f, "
        "swap_free_soft_threshold: %f, swap_free_hard_threshold: %f\n",
        mem_pressure_low_threshold, mem_pressure_high_threshold, gc_cc_max,
        gc_cc_min, dirty_mem_weight, swapped_mem_weight, min_kick_interval,
