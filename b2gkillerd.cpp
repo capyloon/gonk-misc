@@ -111,6 +111,7 @@
 #define MEMINFO_PATH "/proc/meminfo"
 #define MEMINFO_FIELD_COUNT 9
 #define PID_FILE "/data/local/tmp/b2gkillerd.pid"
+#define LOWEST_SCORE 1.0
 
 static double mem_pressure_high_threshold = 60.0;
 static double mem_pressure_low_threshold = 40.0;
@@ -689,7 +690,10 @@ class ProcessKiller {
         continue;
       }
 
-      double score = ProcInfoKillScore(proc, swapSensetive);
+      // Set launcher app as lowest score to let it stay longer.
+      double score = strcmp(proc.mAppName, "launcher") ?
+                     ProcInfoKillScore(proc, swapSensetive) : LOWEST_SCORE;
+
       if (score > best_score) {
         best = &proc;
         best_score = score;
