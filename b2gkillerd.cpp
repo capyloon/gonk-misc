@@ -366,13 +366,17 @@ private:
     char _appname[64];
     const char *appname;
     int cp = fread(_appname, 1, 63, commfp.get());
-    ASSERT(cp > 0, "fail to read app name");
-    // Remove trailing spaces
-    while (cp > 0 && isspace(_appname[cp - 1])) {
-      cp--;
+    if (cp > 0) {
+      // Remove trailing spaces
+      while (cp > 0 && isspace(_appname[cp - 1])) {
+        cp--;
+      }
+      _appname[cp] = 0;
+      appname = _appname;
+    } else {
+      appname = "<unknown>";
     }
-    _appname[cp] = 0;
-    appname = _appname;
+
     strncpy(mAppName, appname, 64);
     return true;
   }
