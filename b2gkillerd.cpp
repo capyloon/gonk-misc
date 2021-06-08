@@ -154,6 +154,7 @@ static double swap_free_soft_threshold = 0.25;
 static double swap_free_hard_threshold = 0.20;
 
 static bool debugging_b2g_killer = false;
+static bool enable_dumpping_process_info = false;
 
 union meminfo {
   struct {
@@ -413,6 +414,9 @@ private:
       } else if (strcmp(field, "VmSwap") == 0) {
         char *value = strtok_r(nullptr, " \t\n:", &saveptr);
         mVmSwap = atol(value);
+      } else if (strcmp(field, "State") == 0) {
+        char *value = strtok_r(nullptr, " \t\n:", &saveptr);
+        strncpy(&mState, value, 1);
       }
     }
     free(buf);
@@ -475,6 +479,7 @@ public:
   long mPrivateDirty;
 
   char mAppName[64];
+  char mState;
 };
 
 
@@ -708,6 +713,31 @@ class ProcessKiller {
   }
 
 public:
+  static const char* GetProcessPriority(ProcessList* aProcs, int aPid) {
+    if (aProcs->HasFG(aPid)) {
+      return "fg";
+    } else if (aProcs->HasBG(aPid)) {
+      return "bg";
+    } else if (aProcs->HasTryToKeep(aPid)) {
+      return "try_to_keep";
+    } else {
+      return "default";
+    }
+  }
+
+  static void DumpProcessesInfo(ProcessList* aProcs) {
+    int pid;
+    const char* priority;
+    for (auto proc = aProcs->begin(); proc != aProcs->end(); proc++) {
+      pid = proc->GetPid();
+      priority = GetProcessPriority(aProcs, pid);
+      LOGI("name: %s, pid: %d, state: %c, priority: %s, score: %.2lf/%.2lf, "
+           "RSS: %ld, VSS: %ld\n",
+           proc->mAppName, pid, proc->mState, priority,
+           ProcInfoKillScore(*proc, false), ProcInfoKillScore(*proc, true),
+           proc->mVmRSS, proc->mVmSize);
+    }
+  }
   /**
    * Choice one of processes and kill it. Return true if kill successfully.
    *
@@ -727,6 +757,9 @@ public:
     int pid = proc->GetPid();
     kill(pid, SIGKILL);
 
+    if (enable_dumpping_process_info) {
+      DumpProcessesInfo(&procs);
+    }
     // XXX: Don't touch line before talking with the data team.
     //      They want the format of this log to be fixed.
     LOGI("Kill proc %s (%d) for memory pressure:%d:%ld/%ld\n",
@@ -1018,6 +1051,9 @@ int
 main() {
   #ifdef ANDROID
   debugging_b2g_killer = property_get_bool("ro.b2gkillerd.debug", false);
+
+  enable_dumpping_process_info =
+    property_get_bool("ro.b2gkillerd.dump_process_info", false);
 
   char buf[PROPERTY_VALUE_MAX] = {'\0'};
   property_get("ro.b2gkillerd.mem_pressure_low_threshold", buf, "40.0");
