@@ -675,7 +675,14 @@ class ProcessKiller {
 
   static bool
   IsTargetKillee(const ProcessInfo& aProc, ProcessList *aProcs, KilleeType aType) {
-    if ((aProcs->HasTryToKeep(aProc.GetPid()) && (aType == TRY_TO_KEEP)) ||
+    if (aProc.mState != 'S' && aProc.mState != 'R') {
+      // If the process's state is 'D' (Uninterruptible Sleep), it's high
+      // possibilty that we cannot kill process and reclaim the memory
+      // immediately. If the state is 'Z' (Zombie), it means process is in the end
+      // of its life cycle, we should not kill it again.
+      // So we skip it if state of process is not 'S' (Sleep) nor 'R' (Running).
+      return false;
+    } else if ((aProcs->HasTryToKeep(aProc.GetPid()) && (aType == TRY_TO_KEEP)) ||
         (aProcs->HasTryToKeep(aProc.GetPid()) && (aType == HIGH_SWAP_TRY_TO_KEEP)) ||
         (aProcs->HasBG(aProc.GetPid()) && (aType == BACKGROUND)) ||
         (aProcs->HasBG(aProc.GetPid()) && (aType == HIGH_SWAP_BACKGROUND)) ||
