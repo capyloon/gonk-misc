@@ -332,9 +332,7 @@ class ProcessInfo {
 public:
   ProcessInfo(int aPid) : mValid(true), mPid(aPid) {}
 
-  bool IsValid() {
-    return mValid;
-  }
+  bool IsValid() const { return mValid; }
 
   int GetPid() const { return mPid; }
 
@@ -675,7 +673,10 @@ class ProcessKiller {
 
   static bool
   IsTargetKillee(const ProcessInfo& aProc, ProcessList *aProcs, KilleeType aType) {
-    if (aProc.mState != 'S' && aProc.mState != 'R') {
+    if (!aProc.IsValid()) {
+      // Return false if process' information is invalid.
+      return false;
+    } else if (aProc.mState != 'S' && aProc.mState != 'R') {
       // If the process's state is 'D' (Uninterruptible Sleep), it's high
       // possibilty that we cannot kill process and reclaim the memory
       // immediately. If the state is 'Z' (Zombie), it means process is in the end
