@@ -49,7 +49,8 @@ endif
 
 PRODUCT_COPY_FILES += \
         gonk-misc/animation/$(CUSTOMER)/bootanimation_$(BOOTUPANIMATION_RESOLUTION).zip:system/media/bootanimation.zip \
-        gonk-misc/poweron-sound.ogg:system/media/poweron-sound.ogg
+        gonk-misc/poweron-sound.ogg:system/media/poweron-sound.ogg \
+        gonk-misc/fonts.xml:system/etc/fonts.xml
 endif
 
 # Enabled build librecovery.
