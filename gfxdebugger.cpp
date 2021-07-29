@@ -99,7 +99,7 @@ int cmd_gralloc(int argc, char **argv) {
           parcel.writeUint32(index);
           LOGD("dump gralloc[%d]", index);
 
-          write(sock, parcel.data(), parcel.dataSize());
+          send(sock, parcel.data(), parcel.dataSize(), 0);
           int rc;
           fd_set read_fds;
           uint8_t buffer[PATH_MAX];
@@ -123,7 +123,7 @@ int cmd_gralloc(int argc, char **argv) {
 
       case 'l': {
         parcel.writeUint32(GRALLOC_OP_LIST);
-        write(sock, parcel.data(), parcel.dataSize());
+        send(sock, parcel.data(), parcel.dataSize(), 0);
 
         int rc;
         fd_set read_fds;
@@ -167,7 +167,8 @@ int cmd_screencap(int argc, char **argv) {
 
   int c = 0;
   unsigned displayId = 0;
-  while ((c = getopt(argc, argv, "d:p:")) != -1) {
+  unsigned pngEncode = false;
+  while ((c = getopt(argc, argv, "pd:")) != -1) {
     LOGD("[screencap] option=%c, arg=%s", c, optarg);
     switch (c) {
       case 'd': {
@@ -180,30 +181,96 @@ int cmd_screencap(int argc, char **argv) {
       }
 
       case 'p': {
+        pngEncode = true;
+        break;
+      }
+
+      default:
+        LOGE("Invalid option: -%c\n", optopt);
+        break;
+    }
+  }
+
+  argc -= optind;
+  argv += optind;
+
+  parcel.writeUint32(SCREENCAP_OP_CAPTURE);
+  parcel.writeUint32(displayId);
+  parcel.writeBool(pngEncode);
+  parcel.writeCString(argv[0]);
+  LOGD("screencap[%s]", argv[0]);
+
+  send(sock, parcel.data(), parcel.dataSize(), 0);
+  int rc;
+  fd_set read_fds;
+  uint8_t buffer[PATH_MAX];
+  memset(buffer, 0, sizeof(buffer));
+
+  FD_SET(sock, &read_fds);
+  rc = select(sock + 1, &read_fds, NULL, NULL, NULL);
+  if (FD_ISSET(sock, &read_fds)) {
+    size_t recv_size = recv(sock, buffer, sizeof(buffer), 0);
+    LOGD("received %zu bytes", recv_size);
+    Parcel p2;
+    p2.setData(buffer, recv_size);
+    LOGD("parcel size: %zu\n", p2.dataSize());
+    LOGD("screencap result: %u\n", p2.readInt32());
+  }
+
+  return 0;
+}
+
+/*---------------------------------------------------------------------------*/
+
+static const uint32_t kMaxTimeLimitSec = 300;       // 5 minutes
+int cmd_screenrecord(int argc, char **argv) {
+  LOGD("cmd_screenrecord+, argc=%d, argv[3]=%s", argc, argv[3]);
+  Parcel parcel;
+  parcel.writeUint32(sizeof(uint32_t));
+  parcel.writeUint32(GD_CMD_SCREENRECORD);
+
+  int c = 0;
+  unsigned displayId = 0;
+  unsigned timeLimitSec = kMaxTimeLimitSec;
+  unsigned outputFormat = FORMAT_MP4;           // data format for output
+  while ((c = getopt(argc, argv, "d:o:t:")) != -1) {
+    LOGD("[screenrecord] option=%c, arg=%s", c, optarg);
+    switch (c) {
+      case 'd': {
         if (optarg) {
-          parcel.writeUint32(SCREENCAP_OP_CAPTURE);
-          parcel.writeUint32(displayId);
-          parcel.writeCString(optarg);
-          LOGD("screencap[%s]", optarg);
+          displayId = strtoul(optarg, NULL, 10);
+        } else {
+          LOGE("[screencap] value for option d is null");
+        }
+        break;
+      }
 
-          write(sock, parcel.data(), parcel.dataSize());
-          int rc;
-          fd_set read_fds;
-          uint8_t buffer[PATH_MAX];
-          memset(buffer, 0, sizeof(buffer));
-
-          FD_SET(sock, &read_fds);
-          rc = select(sock + 1, &read_fds, NULL, NULL, NULL);
-          if (FD_ISSET(sock, &read_fds)) {
-            size_t recv_size = recv(sock, buffer, sizeof(buffer), 0);
-            LOGD("received %zu bytes", recv_size);
-            Parcel p2;
-            p2.setData(buffer, recv_size);
-            LOGD("parcel size: %zu\n", p2.dataSize());
-            LOGD("screencap result: %u\n", p2.readUint32());
+      case 'o': {
+        if (optarg) {
+          if (strcmp(optarg, "mp4") == 0) {
+            outputFormat = FORMAT_MP4;
+          } else if (strcmp(optarg, "webm") == 0) {
+            outputFormat = FORMAT_WEBM;
+          } else if (strcmp(optarg, "3gpp") == 0) {
+            outputFormat = FORMAT_3GPP;
+          } else {
+            LOGE("Unknown format '%s'\n", optarg);
+            return 2;
           }
         } else {
-          LOGE("[screencap] value for option p is null");
+          LOGE("[screenrecord] value for option d is null");
+        }
+        break;
+      }
+
+      case 't': {
+        if (optarg) {
+          timeLimitSec = atoi(optarg);
+          if (timeLimitSec == 0 || timeLimitSec > kMaxTimeLimitSec) {
+            LOGE("Time limit %ds outside acceptable range [1,%d]\n",
+                 timeLimitSec, kMaxTimeLimitSec);
+            return 2;
+          }
         }
         break;
       }
@@ -212,6 +279,33 @@ int cmd_screencap(int argc, char **argv) {
         LOGE("Invalid option: -%c\n", optopt);
         break;
     }
+  }
+
+  argc -= optind;
+  argv += optind;
+
+  parcel.writeUint32(SCREENRECORD_OP_CAPTURE);
+  parcel.writeUint32(displayId);
+  parcel.writeUint32(outputFormat);
+  parcel.writeUint32(timeLimitSec);
+  parcel.writeCString(argv[0]);
+  LOGD("screenrecord[%s]", argv[0]);
+
+  send(sock, parcel.data(), parcel.dataSize(), 0);
+  int rc;
+  fd_set read_fds;
+  uint8_t buffer[PATH_MAX];
+  memset(buffer, 0, sizeof(buffer));
+
+  FD_SET(sock, &read_fds);
+  rc = select(sock + 1, &read_fds, NULL, NULL, NULL);
+  if (FD_ISSET(sock, &read_fds)) {
+    size_t recv_size = recv(sock, buffer, sizeof(buffer), 0);
+    LOGD("received %zu bytes", recv_size);
+    Parcel p2;
+    p2.setData(buffer, recv_size);
+    LOGD("parcel size: %zu\n", p2.dataSize());
+    LOGD("screenrecord result: %u\n", p2.readInt32());
   }
 
   return 0;
@@ -224,6 +318,7 @@ struct main_cmd {
 } main_cmds[] =   {
   { "gralloc",   cmd_gralloc },
   { "screencap", cmd_screencap },
+  { "screenrecord", cmd_screenrecord },
   //{ "layer", 		 cmd_layer },
   //{ "apz", 		   cmd_apz },
 };
@@ -231,11 +326,14 @@ struct main_cmd {
 void usage()
 {
   printf(
-    "usage: \tgfxdebugger [OPTION]\n"
-    "  -c gralloc\t-l\t\t"    "list graloc buffers\n"
-    "  -c gralloc\t-d\tNUM\t" "dump graloc buffers with given buffer id: NUM\n"
-    "  -c screencap\t[-d\tNUM]\t-p\tPATH\t" "capture [0/1:Primary/External]"
-                                            "screen and save to specific PATH\n"
+    "usage: gfxdebugger [OPTION]\n"
+    " -c gralloc -l           :List all allocated graloc buffers.\n"
+    " -c gralloc -d $BufferID :Dump graloc buffers with buffer id $BufferID.\n"
+    " -c screencap [-d $DisplayID] -p $Path \n"
+      ":Capture screen with $DisplayID[0/1:Primary/External] and save to $Path.\n"
+    " -c screenrecord [-d $DisplayID] [-o $VCodec] [-t $Time] $Path \n"
+      ":Record $DisplayID[0/1:Primary/External] screen with $VCodec[mp4/3gpp] for"
+      " $Time seconds and save to $Path.\n"
   );
 }
 
