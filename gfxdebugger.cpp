@@ -214,7 +214,7 @@ int cmd_screencap(int argc, char **argv) {
     Parcel p2;
     p2.setData(buffer, recv_size);
     LOGD("parcel size: %zu\n", p2.dataSize());
-    LOGD("screencap result: %u\n", p2.readInt32());
+    LOGD("screencap result: %s\n", strerror(p2.readInt32()));
   }
 
   return 0;
@@ -305,7 +305,7 @@ int cmd_screenrecord(int argc, char **argv) {
     Parcel p2;
     p2.setData(buffer, recv_size);
     LOGD("parcel size: %zu\n", p2.dataSize());
-    LOGD("screenrecord result: %u\n", p2.readInt32());
+    LOGD("screenrecord result: %s\n", strerror(p2.readInt32()));
   }
 
   return 0;
