@@ -255,6 +255,16 @@ GECKO_MODULE_DEPS += \
 	com.android.runtime
 endif
 
+# Currently, OEM hook is only supported on Qualcomm platform
+ifneq ($(strip $(PRODUCT_MANUFACTURER)), QUALCOMM)
+DISABLE_OEMHOOK=1
+endif
+
+# Build vendor library for OEM hook unless it's disabled
+ifeq ($(DISABLE_OEMHOOK),)
+GECKO_MODULE_DEPS += vendor.qti.hardware.radio.qcrilhook@1.0
+endif
+
 ifeq ($(IME_ENGINE), touchpal)
 GECKO_LIB_DEPS += libtouchpal.so
 endif
