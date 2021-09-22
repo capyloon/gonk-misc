@@ -198,6 +198,7 @@ allow b2g devpts:chr_file rw_file_perms;
 userdebug_or_eng(`
 allow b2g su:dir r_dir_perms;
 allow b2g su:file r_file_perms;
+allow b2g su:fifo_file append;
 ')
 
 allow b2g servicemanager:dir r_dir_perms;
