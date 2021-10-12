@@ -306,7 +306,7 @@ private:
 
   double DiffLastTimestamp() {
     timespec tm;
-    clock_gettime(CLOCK_REALTIME_COARSE, &tm);
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &tm);
     double diff_sec =
       (double)(tm.tv_sec - last_tm.tv_sec) +
       (double)(tm.tv_nsec - last_tm.tv_nsec) * 1.0e-9;
@@ -1097,7 +1097,7 @@ public:
   static void Kick() {
     // Consecutive kicks should be longer than |min_kick_interval| seconds.
     timespec tm;
-    clock_gettime(CLOCK_REALTIME_COARSE, &tm);
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &tm);
     double tm_diff = (double)(tm.tv_sec - mLastTm.tv_sec) +
       (double)(tm.tv_nsec - mLastTm.tv_nsec) * 1e-9;
     if (tm_diff < min_kick_interval) {
