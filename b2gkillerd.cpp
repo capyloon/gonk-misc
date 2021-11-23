@@ -707,7 +707,7 @@ class ProcessKiller {
     bool swapSensetive = (aType == HIGH_SWAP_BACKGROUND) ||
                          (aType == HIGH_SWAP_FOREGROUND) ||
                          (aType == HIGH_SWAP_TRY_TO_KEEP);
-    LOGI("Try to kill process with priority %d\n", aType);
+    LOGD("Try to kill process with priority %d\n", aType);
     for (auto& proc : *aProcs) {
       if (!IsTargetKillee(proc, aProcs, aType)) {
         continue;
