@@ -1146,6 +1146,8 @@ void WatchMemPressure() {
       LOGI("Failed to get free memory to parse meminfo!");
     }
 
+    mpcounter->Add(cnt);
+
     float swap_free_percent = (float) mi.field.free_swap / mi.field.total_swap;
 
     if (swap_free_percent < swap_free_soft_threshold) {
@@ -1164,7 +1166,6 @@ void WatchMemPressure() {
       // B2g is booting, don't kill any process and skip all memory
       // pressure events.
     } else {
-      mpcounter->Add(cnt);
       double mem_pressure_avg = mpcounter->Average();
       bool memory_too_low = mem_pressure_avg > mem_pressure_low_threshold;
 
