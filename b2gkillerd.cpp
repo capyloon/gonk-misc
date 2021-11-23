@@ -118,14 +118,15 @@
 #define MEMINFO_FIELD_COUNT 9
 #define PID_FILE "/data/local/tmp/b2gkillerd.pid"
 #define LOWEST_SCORE 1.0
+#define IDLE_MPCOUNTER 2.0
 
 static double mem_pressure_high_threshold = 60.0;
-static double mem_pressure_low_threshold = 40.0;
+static double mem_pressure_low_threshold = 30.0;
 
 // Trigger GC/CC only when the memory pressure is between max and min
 // threshold below.
-static double gc_cc_max = 40.0;
-static double gc_cc_min = 30.0;
+static double gc_cc_max = 60.0;
+static double gc_cc_min = 40.0;
 
 /**
   * Dirty memory have to be written out before reclaiming it while
@@ -1168,26 +1169,32 @@ void WatchMemPressure() {
     } else {
       double mem_pressure_avg = mpcounter->Average();
       bool memory_too_low = mem_pressure_avg > mem_pressure_low_threshold;
-
-      if (memory_too_low && (ProcessKiller::KillOneProc(BACKGROUND))) {
-        LOGD("memory pressure counter %u, average %f, "
-             "killing background app successully\n", cnt, mem_pressure_avg);
-      } else if ((mem_pressure_avg > mem_pressure_high_threshold) &&
-                 (ProcessKiller::KillOneProc(TRY_TO_KEEP))) {
-        LOGD("memory pressure counter %u, average %f, "
-             "killing try_to_keep app successfully\n", cnt, mem_pressure_avg);
-      } else {
-        LOGD("memory pressure counter %u, average %f\n", cnt, mem_pressure_avg);
-      }
-
+      bool memory_extreme_low = mem_pressure_avg > mem_pressure_high_threshold;
       bool do_gc_cc = (mem_pressure_avg >= gc_cc_min &&
                        mem_pressure_avg <= gc_cc_max);
-      if (do_gc_cc) {
-        GCCCKicker::Kick();
+
+      // To reduce logs, we only print memory pressure counter if it's not idle.
+      if (mem_pressure_avg >= IDLE_MPCOUNTER) {
+        LOGD("Memory pressure counter %u, average %f\n", cnt, mem_pressure_avg);
       }
 
-      ASSERT(!do_gc_cc || !memory_too_low,
-             "should not do both GC/CC and killing a process");
+      /*
+       * Once b2gkillerd got memory pressure, it will kill background apps first
+       * to release memory as soon as possible. Then trigger gc/cc to reclaim
+       * more memory if no backgound app can be killed. If above two actions
+       * don't help, it will kill try_to_keep app.
+       */
+      if (memory_too_low && ProcessKiller::KillOneProc(BACKGROUND)) {
+        LOGD("Memory is low and kills background app successully\n");
+      } else if (do_gc_cc){
+        GCCCKicker::Kick();
+      } else if (memory_extreme_low) {
+	if (ProcessKiller::KillOneProc(TRY_TO_KEEP)) {
+          LOGD("Memory is extreme low and kills try_to_keep app successfully\n");
+	} else { // Failed to kill try_to_keep apps.
+          LOGI("Memory is extreme low but no app could be killed\n")
+	}
+      }
     }
 
     return true;
@@ -1236,16 +1243,16 @@ main() {
     property_get_bool("ro.b2gkillerd.dump_process_info", false);
 
   char buf[PROPERTY_VALUE_MAX] = {'\0'};
-  property_get("ro.b2gkillerd.mem_pressure_low_threshold", buf, "40.0");
+  property_get("ro.b2gkillerd.mem_pressure_low_threshold", buf, "30.0");
   mem_pressure_low_threshold = atof(buf);
 
   property_get("ro.b2gkillerd.mem_pressure_high_threshold", buf, "60.0");
   mem_pressure_high_threshold = atof(buf);
 
-  property_get("ro.b2gkillerd.gc_cc_max", buf, "40.0");
+  property_get("ro.b2gkillerd.gc_cc_max", buf, "60.0");
   gc_cc_max = atof(buf);
 
-  property_get("ro.b2gkillerd.gc_cc_min", buf, "30.0");
+  property_get("ro.b2gkillerd.gc_cc_min", buf, "40.0");
   gc_cc_min = atof(buf);
 
   property_get("ro.b2gkillerd.dirty_mem_weight", buf, "0.2");
