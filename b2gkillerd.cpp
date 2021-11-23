@@ -762,24 +762,31 @@ public:
    * ones are left.
    */
   static bool KillOneProc(KilleeType aType) {
+    bool success = false;
     ProcessList procs;
     FillB2GProcessList(&procs);
     auto proc = FindBestProcToKill(&procs, aType);
     if (proc == nullptr) {
       LOGD("There is no proper process to kill!\n");
-      return false;
+      return success;
     }
     int pid = proc->GetPid();
-    kill(pid, SIGKILL);
+    if (kill(pid, SIGKILL)) {
+      LOGI("Failed to kill proc %s (%d) with error: %s\n", proc->mAppName, pid,
+           strerror(errno));
+    } else {
+      // XXX: Don't touch line before talking with the data team.
+      //      They want the format of this log to be fixed.
+      LOGI("Kill proc %s (%d) for memory pressure:%d:%ld/%ld\n",
+           proc->mAppName, pid, (int)aType, proc->mVmRSS, proc->mVmSize);
+      success = true;
+    }
 
     if (enable_dumpping_process_info) {
       DumpProcessesInfo(&procs);
     }
-    // XXX: Don't touch line before talking with the data team.
-    //      They want the format of this log to be fixed.
-    LOGI("Kill proc %s (%d) for memory pressure:%d:%ld/%ld\n",
-         proc->mAppName, pid, (int)aType, proc->mVmRSS, proc->mVmSize);
-    return true;
+
+    return success;
   }
 };
 
