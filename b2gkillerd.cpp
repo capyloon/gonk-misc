@@ -165,7 +165,7 @@ static bool enable_dumpping_process_info = false;
 
 union meminfo {
   struct {
-    int64_t nr_free_pages;
+    int64_t free;
     int64_t cached;
     int64_t swap_cached;
     int64_t buffers;
@@ -1161,8 +1161,8 @@ void WatchMemPressure() {
     if (swap_free_percent < swap_free_soft_threshold) {
       // Swap too much, now purge time. Kill until we got more SWAP space.
       LOGI("SWAP free percentage is low, memory swap free percentage: %f\n", swap_free_percent);
-      LOGD("mi.field.free_swap: %" PRIi64, mi.field.free_swap);
-      LOGD("mi.field.total_swap: %" PRIi64, mi.field.total_swap);
+      LOGD("mi.field.free_swap: %" PRIi64 " KB", mi.field.free_swap);
+      LOGD("mi.field.total_swap: %" PRIi64 " KB", mi.field.total_swap);
 
       if (!ProcessKiller::KillOneProc(HIGH_SWAP_BACKGROUND)) {
         if (!ProcessKiller::KillOneProc(HIGH_SWAP_TRY_TO_KEEP) &&
