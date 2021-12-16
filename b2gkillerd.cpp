@@ -337,7 +337,7 @@ private:
  */
 class ProcessInfo {
 public:
-  ProcessInfo(int aPid) : mValid(true), mPid(aPid) {}
+  ProcessInfo(int aPid) : mValid(false), mPid(aPid) {}
 
   bool IsValid() const { return mValid; }
 
@@ -347,15 +347,8 @@ public:
    * Read memory usages of the process from procfs.
    */
   bool Update() {
-    bool success = UpdateStatus();
-    if (!success) {
-      return false;
-    }
-    success = UpdateComm();
-    if (!success) {
-      return false;
-    }
-    return UpdateSmaps();
+    mValid = UpdateStatus() && UpdateComm() && UpdateSmaps();
+    return mValid;
   }
 
 private:
@@ -365,7 +358,6 @@ private:
     snprintf(commpath, 64, "/proc/%d/comm", mPid);
     std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(commpath, "r"), fclose);
     if (commfp == nullptr) {
-      mValid = false;
       return false;
     }
 
@@ -392,7 +384,6 @@ private:
     snprintf(status_fn, 64, "/proc/%d/status", mPid);
     std::unique_ptr<FILE, int(*)(FILE*)> fo(fopen(status_fn, "r"), fclose);
     if (fo == nullptr) {
-      mValid = false;
       return false;
     }
 
@@ -433,7 +424,6 @@ private:
     snprintf(status_fn, 64, "/proc/%d/smaps", mPid);
     std::unique_ptr<FILE, int(*)(FILE*)> fo(fopen(status_fn, "r"), fclose);
     if (fo == nullptr) {
-      mValid = false;
       return false;
     }
 
@@ -744,6 +734,10 @@ public:
     int pid;
     const char* priority;
     for (auto proc = aProcs->begin(); proc != aProcs->end(); proc++) {
+      if (!proc->IsValid()) {
+        continue;
+      }
+
       pid = proc->GetPid();
       priority = GetProcessPriority(aProcs, pid);
       LOGI("name: %s, pid: %d, state: %c, priority: %s, score: %.2lf/%.2lf, "
