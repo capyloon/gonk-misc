@@ -759,6 +759,11 @@ public:
     bool success = false;
     ProcessList procs;
     FillB2GProcessList(&procs);
+
+    if (enable_dumpping_process_info) {
+      DumpProcessesInfo(&procs);
+    }
+
     auto proc = FindBestProcToKill(&procs, aType);
     if (proc == nullptr) {
       LOGD("There is no proper process to kill!\n");
