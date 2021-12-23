@@ -1284,7 +1284,7 @@ main() {
   property_get("ro.b2gkillerd.swap_free_hard_threshold", buf, "0.20");
   swap_free_hard_threshold = atof(buf);
 
-  LOGD("Reading config: mem_pressure_low_threshold: %f, "
+  LOGI("Reading config: mem_pressure_low_threshold: %f, "
        "mem_pressure_high_threshold: %fgc_cc_max: %f, gc_cc_min: %f, "
        "dirty_mem_weight: %f, swapped_mem_weight: %f, minkickinterval: %f, "
        "swap_free_soft_threshold: %f, swap_free_hard_threshold: %f\n",
@@ -1303,6 +1303,24 @@ main() {
   int cp = fprintf(pid_fp, "%d\n", getpid());
   ASSERT(cp > 0, "Fail to write to the PID file " PID_FILE "\n");
   fclose(pid_fp);
+
+  /*
+   * mem_pressure_low_threshold and mem_pressure_high_threshold are memory
+   * pressure thresholds. b2gkillerd kills background apps if memory pressure
+   * exceeds the lower one. Once memory pressure exceeds
+   * mem_pressure_high_threshold, b2gkillerd will kill try_to_keep apps to
+   * release memory. Here we'd like to keep try_to_keep apps alive as possible
+   * as we can to have better user experience, ex: launcher or keyboard apps.
+   * According to bug 128056 and bug 128490, the result shows "trigger GC
+   * earlier and frequently" consumes more CPU but gain less, deferring GC after
+   * killing background apps could reclaim memory more effectively and get
+   * better performance.
+   */
+  ASSERT(gc_cc_max >= gc_cc_min, "gc_cc_max should not less than gc_cc_min");
+  ASSERT(mem_pressure_high_threshold >= gc_cc_max, \
+	 "mem_pressure_high_threshold should not less than gc_cc_max");
+  ASSERT(gc_cc_min >= mem_pressure_low_threshold, \
+	 "gc_cc_min should not less than mem_pressure_low_threshold");
 
   WatchMemPressure();
 
