@@ -153,7 +153,7 @@ static double swapped_mem_weight = 0.5;
 // High swapped mem weight.
 static double high_swapped_mem_weight = 1.5;
 
-// Consecutive kicks should be longer than |kMinKickInterval| seconds.
+// Consecutive kicks should be longer than |min_kick_interval| seconds.
 static double min_kick_interval = 0.5;
 
 // Available swap free threshold.
@@ -1208,11 +1208,11 @@ void WatchMemPressure() {
       } else if (do_gc_cc){
         GCCCKicker::Kick();
       } else if (memory_extreme_low) {
-	if (ProcessKiller::KillOneProc(TRY_TO_KEEP)) {
+        if (ProcessKiller::KillOneProc(TRY_TO_KEEP)) {
           LOGD("Memory is extreme low and kills try_to_keep app successfully\n");
-	} else { // Failed to kill try_to_keep apps.
+        } else { // Failed to kill try_to_keep apps.
           LOGI("Memory is extreme low but no app could be killed\n")
-	}
+        }
       }
     }
 
@@ -1290,8 +1290,8 @@ main() {
   swap_free_hard_threshold = atof(buf);
 
   LOGI("Reading config: mem_pressure_low_threshold: %f, "
-       "mem_pressure_high_threshold: %fgc_cc_max: %f, gc_cc_min: %f, "
-       "dirty_mem_weight: %f, swapped_mem_weight: %f, minkickinterval: %f, "
+       "mem_pressure_high_threshold: %f, gc_cc_max: %f, gc_cc_min: %f, "
+       "dirty_mem_weight: %f, swapped_mem_weight: %f, min_kick_interval: %f, "
        "swap_free_soft_threshold: %f, swap_free_hard_threshold: %f\n",
        mem_pressure_low_threshold, mem_pressure_high_threshold, gc_cc_max,
        gc_cc_min, dirty_mem_weight, swapped_mem_weight, min_kick_interval,
@@ -1323,9 +1323,9 @@ main() {
    */
   ASSERT(gc_cc_max >= gc_cc_min, "gc_cc_max should not less than gc_cc_min");
   ASSERT(mem_pressure_high_threshold >= gc_cc_max, \
-	 "mem_pressure_high_threshold should not less than gc_cc_max");
+         "mem_pressure_high_threshold should not less than gc_cc_max");
   ASSERT(gc_cc_min >= mem_pressure_low_threshold, \
-	 "gc_cc_min should not less than mem_pressure_low_threshold");
+         "gc_cc_min should not less than mem_pressure_low_threshold");
 
   WatchMemPressure();
 
