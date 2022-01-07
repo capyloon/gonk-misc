@@ -100,6 +100,7 @@ proc_vmstat
 get_prop(api-daemon, hwservicemanager_prop);
 set_prop(api-daemon, default_prop);
 
+allow api-daemon b2gkillerd:unix_dgram_socket sendto;
 allow api-daemon proc_diskstats:file getattr;
 allow api-daemon proc_interrupts:file getattr;
 allow api-daemon proc_pagetypeinfo:file getattr;
