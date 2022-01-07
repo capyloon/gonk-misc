@@ -1159,6 +1159,20 @@ void WatchMemPressure() {
     }
 
     mpcounter->Add(cnt);
+    double mem_pressure_avg = mpcounter->Average();
+
+    // To reduce logs, we only print memory information if it's not idle.
+    if (mem_pressure_avg >= IDLE_MPCOUNTER) {
+      LOGD("Memory pressure counter %u, average %f\n", cnt, mem_pressure_avg);
+      LOGD("MemFree: %" PRIi64 " KB, Cached: %" PRIi64 " KB, "
+           "SwapCached: %" PRIi64 " KB, Buffers: %" PRIi64 " KB, "
+           "Shmem: %" PRIi64 " KB, Unevictable: %" PRIi64 " KB, "
+           "SwapTotal: %" PRIi64 " KB, SwapFree: %" PRIi64 " KB, "
+           "Dirty: %" PRIi64 " KB\n",
+           mi.field.free, mi.field.cached, mi.field.swap_cached,
+           mi.field.buffers, mi.field.shmem, mi.field.unevictable,
+           mi.field.total_swap, mi.field.free_swap, mi.field.dirty);
+    }
 
     float swap_free_percent = (float) mi.field.free_swap / mi.field.total_swap;
 
@@ -1178,25 +1192,10 @@ void WatchMemPressure() {
       // B2g is booting, don't kill any process and skip all memory
       // pressure events.
     } else {
-      double mem_pressure_avg = mpcounter->Average();
       bool memory_too_low = mem_pressure_avg > mem_pressure_low_threshold;
       bool memory_extreme_low = mem_pressure_avg > mem_pressure_high_threshold;
       bool do_gc_cc = (mem_pressure_avg >= gc_cc_min &&
                        mem_pressure_avg <= gc_cc_max);
-
-      // To reduce logs, we only print memory information if it's not idle.
-      if (mem_pressure_avg >= IDLE_MPCOUNTER) {
-        LOGD("Memory pressure counter %u, average %f\n", cnt, mem_pressure_avg);
-        LOGD("MemFree: %" PRIi64 " KB, Cached: %" PRIi64 " KB, "
-             "SwapCached: %" PRIi64 " KB, Buffers: %" PRIi64 " KB, "
-             "Shmem: %" PRIi64 " KB, Unevictable: %" PRIi64 " KB, "
-             "SwapTotal: %" PRIi64 " KB, SwapFree: %" PRIi64 " KB, "
-             "Dirty: %" PRIi64 " KB\n",
-             mi.field.free, mi.field.cached, mi.field.swap_cached,
-             mi.field.buffers, mi.field.shmem, mi.field.unevictable,
-             mi.field.total_swap, mi.field.free_swap, mi.field.dirty);
-      }
-
       /*
        * Once b2gkillerd got memory pressure, it will kill background apps first
        * to release memory as soon as possible. Then trigger gc/cc to reclaim
