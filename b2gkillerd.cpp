@@ -1050,8 +1050,13 @@ class GCCCKicker {
       std::unique_ptr<FILE, int(*)(FILE*)> commfp(fopen(comm, "r"), fclose);
       if (!commfp) continue;
       if (getline(&comm, &commsz, commfp.get()) <= 0) continue;
-      if (strcmp(comm, "b2g\n")) continue;
-      // The B2G parent process
+      /* On initialization, the b2g parent process name is `b2g`, as its binary
+       * name. After the patch https://phabricator.services.mozilla.com/D121844,
+       * profiler_init calls ThreadRegistration::RegisterThread. This renames
+       * the thread name, and the b2g parent process name is therefore renamed
+       * to `GeckoMain` as well.
+       */
+      if (strcmp(comm, "b2g\n") && strcmp(comm, "GeckoMain\n")) continue;
       parent = pid;
       break;
     }
