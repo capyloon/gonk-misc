@@ -154,6 +154,9 @@ static double high_swapped_mem_weight = 1.5;
 // Consecutive kicks should be longer than |min_kick_interval| seconds.
 static double min_kick_interval = 0.5;
 
+// Consecutive kicks should be longer than |min_kill_interval| seconds.
+static double min_kill_interval = 0.8;
+
 // Available swap free threshold.
 static double swap_free_soft_threshold = 0.25;
 static double swap_free_hard_threshold = 0.20;
@@ -756,6 +759,18 @@ public:
    */
   static bool KillOneProc(KilleeType aType, bool aSwapSensetive) {
     bool success = false;
+    timespec tm;
+    // Consecutive kills should be longer than |min_kill_interval| seconds.
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &tm);
+    double tm_diff = (double)(tm.tv_sec - mLastTm.tv_sec) +
+                     (double)(tm.tv_nsec - mLastTm.tv_nsec) * 1e-9;
+    // Here we allow background app could be killed consecutively.
+    if (aType != BACKGROUND && tm_diff < min_kill_interval) {
+      LOGD("Try to kill app in a short interval (%fs), ignore it!\n",
+           min_kill_interval);
+      return success;
+    }
+
     ProcessList procs;
     FillB2GProcessList(&procs);
 
@@ -778,6 +793,7 @@ public:
       LOGI("Kill proc %s (%d) for memory pressure:%d:%ld/%ld\n",
            proc->mAppName, pid, (int)aType, proc->mVmRSS, proc->mVmSize);
       success = true;
+      mLastTm = tm;
     }
 
     if (enable_dumpping_process_info) {
@@ -786,9 +802,12 @@ public:
 
     return success;
   }
+
+private:
+  static timespec mLastTm;
 };
 
-
+timespec ProcessKiller::mLastTm = { 0, 0 };
 
 /**
  * Watch at memory pressure events.
@@ -1295,6 +1314,9 @@ main() {
   property_get("ro.b2gkillerd.min_kick_interval", buf, "0.5");
   min_kick_interval = atof(buf);
 
+  property_get("ro.b2gkillerd.min_kill_interval", buf, "0.8");
+  min_kill_interval = atof(buf);
+
   property_get("ro.b2gkillerd.swap_free_soft_threshold", buf, "0.25");
   swap_free_soft_threshold = atof(buf);
 
@@ -1304,10 +1326,11 @@ main() {
   LOGI("Reading config: mem_pressure_low_threshold: %f, "
        "mem_pressure_high_threshold: %f, gc_cc_max: %f, gc_cc_min: %f, "
        "dirty_mem_weight: %f, swapped_mem_weight: %f, min_kick_interval: %f, "
-       "swap_free_soft_threshold: %f, swap_free_hard_threshold: %f\n",
+       "min_kick_interval: %f, swap_free_soft_threshold: %f, "
+       "swap_free_hard_threshold: %f\n",
        mem_pressure_low_threshold, mem_pressure_high_threshold, gc_cc_max,
        gc_cc_min, dirty_mem_weight, swapped_mem_weight, min_kick_interval,
-       swap_free_soft_threshold, swap_free_hard_threshold);
+       min_kill_interval, swap_free_soft_threshold, swap_free_hard_threshold);
  #endif
 
   if (CheckCgroups()) {

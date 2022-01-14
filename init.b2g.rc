@@ -86,6 +86,7 @@ on boot
     setprop ro.b2gkillerd.swap_free_soft_threshold "0.25"
     setprop ro.b2gkillerd.swap_free_hard_threshold "0.20"
     setprop ro.b2gkillerd.min_kick_interval "5.5"
+    setprop ro.b2gkillerd.min_kill_interval "0.8"
 
 on property:shell.ready=1
     start b2gkillerd
