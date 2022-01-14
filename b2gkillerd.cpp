@@ -136,11 +136,9 @@ static double gc_cc_min = 40.0;
 static double dirty_mem_weight = 0.2;
 
 enum KilleeType {
-  HIGH_SWAP_BACKGROUND,
-  HIGH_SWAP_TRY_TO_KEEP,
-  HIGH_SWAP_FOREGROUND,
   BACKGROUND,
-  TRY_TO_KEEP
+  TRY_TO_KEEP,
+  FOREGROUND
 };
 
 /**
@@ -680,11 +678,9 @@ class ProcessKiller {
       // of its life cycle, we should not kill it again.
       // So we skip it if state of process is not 'S' (Sleep) nor 'R' (Running).
       return false;
-    } else if ((aProcs->HasTryToKeep(aProc.GetPid()) && (aType == TRY_TO_KEEP)) ||
-        (aProcs->HasTryToKeep(aProc.GetPid()) && (aType == HIGH_SWAP_TRY_TO_KEEP)) ||
-        (aProcs->HasBG(aProc.GetPid()) && (aType == BACKGROUND)) ||
-        (aProcs->HasBG(aProc.GetPid()) && (aType == HIGH_SWAP_BACKGROUND)) ||
-        (aProcs->HasFG(aProc.GetPid()) && (aType == HIGH_SWAP_FOREGROUND))) {
+    } else if ((aProcs->HasBG(aProc.GetPid()) && (aType == BACKGROUND)) ||
+        (aProcs->HasTryToKeep(aProc.GetPid()) && (aType == TRY_TO_KEEP)) ||
+        (aProcs->HasFG(aProc.GetPid()) && (aType == FOREGROUND))) {
       return true;
     } else {
       return false;
@@ -692,12 +688,10 @@ class ProcessKiller {
   }
 
   static const ProcessInfo*
-  FindBestProcToKill(ProcessList* aProcs, KilleeType aType) {
+  FindBestProcToKill(ProcessList* aProcs, KilleeType aType, bool aSwapSensetive) {
     const ProcessInfo *best = nullptr;
     double best_score = 0.0;
-    bool swapSensetive = (aType == HIGH_SWAP_BACKGROUND) ||
-                         (aType == HIGH_SWAP_FOREGROUND) ||
-                         (aType == HIGH_SWAP_TRY_TO_KEEP);
+
     LOGD("Try to kill process with priority %d\n", aType);
     for (auto& proc : *aProcs) {
       if (!IsTargetKillee(proc, aProcs, aType)) {
@@ -706,7 +700,7 @@ class ProcessKiller {
 
       // Set launcher app as lowest score to let it stay longer.
       double score = strcmp(proc.mAppName, "launcher") ?
-                     ProcInfoKillScore(proc, swapSensetive) : LOWEST_SCORE;
+                     ProcInfoKillScore(proc, aSwapSensetive) : LOWEST_SCORE;
 
       if (score > best_score) {
         best = &proc;
@@ -755,7 +749,7 @@ public:
    * processes other than try-to-keep ones, unless only try-to-keeps
    * ones are left.
    */
-  static bool KillOneProc(KilleeType aType) {
+  static bool KillOneProc(KilleeType aType, bool aSwapSensetive) {
     bool success = false;
     ProcessList procs;
     FillB2GProcessList(&procs);
@@ -764,7 +758,7 @@ public:
       DumpProcessesInfo(&procs);
     }
 
-    auto proc = FindBestProcToKill(&procs, aType);
+    auto proc = FindBestProcToKill(&procs, aType, aSwapSensetive);
     if (proc == nullptr) {
       LOGD("There is no proper process to kill!\n");
       return success;
@@ -1178,14 +1172,22 @@ void WatchMemPressure() {
 
     if (swap_free_percent < swap_free_soft_threshold) {
       // Swap too much, now purge time. Kill until we got more SWAP space.
-      LOGI("SWAP free percentage is low, memory swap free percentage: %f\n", swap_free_percent);
+      LOGI("SWAP free percentage is low, memory swap free percentage: %f "
+           "swap_free_soft_threshold: %f, swap_free_hard_threshold: %f\n",
+           swap_free_percent, swap_free_soft_threshold,
+           swap_free_hard_threshold);
       LOGD("mi.field.free_swap: %" PRIi64 " KB", mi.field.free_swap);
       LOGD("mi.field.total_swap: %" PRIi64 " KB", mi.field.total_swap);
 
-      if (!ProcessKiller::KillOneProc(HIGH_SWAP_BACKGROUND)) {
-        if (!ProcessKiller::KillOneProc(HIGH_SWAP_TRY_TO_KEEP) &&
-            (swap_free_percent < swap_free_hard_threshold)) {
-          ProcessKiller::KillOneProc(HIGH_SWAP_FOREGROUND);
+      if (ProcessKiller::KillOneProc(BACKGROUND, true)) {
+        LOGD("Swap free is low and kills background app successfully\n");
+      } else if (ProcessKiller::KillOneProc(TRY_TO_KEEP, true)) {
+        LOGD("Swap free is low and kills try_to_keep app successfully\n");
+      } else if (swap_free_percent < swap_free_hard_threshold) {
+        if (ProcessKiller::KillOneProc(FOREGROUND, true)) {
+          LOGD("Swap free is extreme low and kills foreground app successfully\n");
+        } else {
+          LOGI("Swap free is extreme low but no app could be killed\n");
         }
       }
     } else if (watcher.GetHintFlags() & MemPressureWatcher::HINT_BOOT) {
@@ -1202,12 +1204,12 @@ void WatchMemPressure() {
        * more memory if no backgound app can be killed. If above two actions
        * don't help, it will kill try_to_keep app.
        */
-      if (memory_too_low && ProcessKiller::KillOneProc(BACKGROUND)) {
+      if (memory_too_low && ProcessKiller::KillOneProc(BACKGROUND,false)) {
         LOGD("Memory is low and kills background app successully\n");
       } else if (do_gc_cc){
         GCCCKicker::Kick();
       } else if (memory_extreme_low) {
-        if (ProcessKiller::KillOneProc(TRY_TO_KEEP)) {
+        if (ProcessKiller::KillOneProc(TRY_TO_KEEP, false)) {
           LOGD("Memory is extreme low and kills try_to_keep app successfully\n");
         } else { // Failed to kill try_to_keep apps.
           LOGI("Memory is extreme low but no app could be killed\n")
