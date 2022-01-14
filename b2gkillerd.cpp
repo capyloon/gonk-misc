@@ -298,6 +298,11 @@ public:
     return datum;
   }
 
+  double Reset() {
+    datum = 0.0;
+    return datum;
+  }
+
 private:
   double factor;
   double datum;
@@ -1146,6 +1151,7 @@ void WatchMemPressure() {
    * correctly.
    */
   auto killer = [&](unsigned int cnt) -> bool {
+    bool killed = false;
     union meminfo mi;
 
     if (MemInfoParse(&mi) < 0) {
@@ -1179,12 +1185,12 @@ void WatchMemPressure() {
       LOGD("mi.field.free_swap: %" PRIi64 " KB", mi.field.free_swap);
       LOGD("mi.field.total_swap: %" PRIi64 " KB", mi.field.total_swap);
 
-      if (ProcessKiller::KillOneProc(BACKGROUND, true)) {
+      if ((killed = ProcessKiller::KillOneProc(BACKGROUND, true))) {
         LOGD("Swap free is low and kills background app successfully\n");
-      } else if (ProcessKiller::KillOneProc(TRY_TO_KEEP, true)) {
+      } else if ((killed = ProcessKiller::KillOneProc(TRY_TO_KEEP, true))) {
         LOGD("Swap free is low and kills try_to_keep app successfully\n");
       } else if (swap_free_percent < swap_free_hard_threshold) {
-        if (ProcessKiller::KillOneProc(FOREGROUND, true)) {
+        if ((killed = ProcessKiller::KillOneProc(FOREGROUND, true))) {
           LOGD("Swap free is extreme low and kills foreground app successfully\n");
         } else {
           LOGI("Swap free is extreme low but no app could be killed\n");
@@ -1204,17 +1210,22 @@ void WatchMemPressure() {
        * more memory if no backgound app can be killed. If above two actions
        * don't help, it will kill try_to_keep app.
        */
-      if (memory_too_low && ProcessKiller::KillOneProc(BACKGROUND,false)) {
+      if (memory_too_low &&
+          (killed = ProcessKiller::KillOneProc(BACKGROUND, false))) {
         LOGD("Memory is low and kills background app successully\n");
       } else if (do_gc_cc){
         GCCCKicker::Kick();
       } else if (memory_extreme_low) {
-        if (ProcessKiller::KillOneProc(TRY_TO_KEEP, false)) {
+        if ((killed = ProcessKiller::KillOneProc(TRY_TO_KEEP, false))) {
           LOGD("Memory is extreme low and kills try_to_keep app successfully\n");
         } else { // Failed to kill try_to_keep apps.
           LOGI("Memory is extreme low but no app could be killed\n")
         }
       }
+    }
+
+    if (killed) {
+      mpcounter->Reset();
     }
 
     return true;
