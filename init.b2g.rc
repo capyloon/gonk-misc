@@ -85,6 +85,9 @@ on boot
     setprop ro.b2gkillerd.swapped_mem_weight "0.5"
     setprop ro.b2gkillerd.swap_free_soft_threshold "0.25"
     setprop ro.b2gkillerd.swap_free_hard_threshold "0.20"
+    # free/cache watermark for background, try_to_keep and foreground apps
+    setprop ro.b2gkillerd.mem_free_low_watermark "2147483647,8192,8192"
+    setprop ro.b2gkillerd.cache_low_watermark "2147483647,51200,51200"
     setprop ro.b2gkillerd.min_kick_interval "5.5"
     setprop ro.b2gkillerd.min_kill_interval "0.8"
 

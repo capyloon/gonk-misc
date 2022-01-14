@@ -138,7 +138,8 @@ static double dirty_mem_weight = 0.2;
 enum KilleeType {
   BACKGROUND,
   TRY_TO_KEEP,
-  FOREGROUND
+  FOREGROUND,
+  KILLEE_TYPE_NUMS
 };
 
 /**
@@ -160,6 +161,9 @@ static double min_kill_interval = 0.8;
 // Available swap free threshold.
 static double swap_free_soft_threshold = 0.25;
 static double swap_free_hard_threshold = 0.20;
+
+static int mem_free_low_watermark[KILLEE_TYPE_NUMS] = { INT_MAX, 8192, 8192 };
+static int cache_low_watermark[KILLEE_TYPE_NUMS] = { INT_MAX, 51200, 51200 };
 
 static bool debugging_b2g_killer = false;
 static bool enable_dumpping_process_info = false;
@@ -244,27 +248,27 @@ static bool MemInfoParseLine(char *line, union meminfo *mi) {
   return (match_res != PARSE_FAIL);
 }
 
-static int MemInfoParse(union meminfo *mi) {
+static bool MemInfoParse(union meminfo *mi) {
   size_t sz = 128;
   char *buf = (char*)malloc(sz);
   memset(mi, 0, sizeof(union meminfo));
 
   FILE* fo = fopen(MEMINFO_PATH, "r");
   if (fo == nullptr) {
-    return -1;
+    return false;
   }
 
   while (getline(&buf, &sz, fo) >= 0) {
     if (!MemInfoParseLine(buf, mi)) {
       LOGI("meminfo parse error");
-      return -1;
+      return false;
     }
   }
 
   free(buf);
   fclose(fo);
 
-  return 0;
+  return true;
 }
 
 /**
@@ -696,13 +700,26 @@ class ProcessKiller {
   }
 
   static const ProcessInfo*
-  FindBestProcToKill(ProcessList* aProcs, KilleeType aType, bool aSwapSensetive) {
+  FindBestProcToKill(ProcessList* aProcs, KilleeType aType, bool aSwapSensetive,
+                     const meminfo* aMemInfo) {
     const ProcessInfo *best = nullptr;
     double best_score = 0.0;
+
+    if (aMemInfo == nullptr) {
+      return best;
+    }
 
     LOGD("Try to kill process with priority %d\n", aType);
     for (auto& proc : *aProcs) {
       if (!IsTargetKillee(proc, aProcs, aType)) {
+        continue;
+      }
+
+      if (aMemInfo->field.free > mem_free_low_watermark[aType] ||
+          aMemInfo->field.cached > cache_low_watermark[aType]) {
+        LOGD("Try to %s but still have enough free memory (%" PRIi64 "KB + %"
+             PRIi64 "KB), skip it", proc.mAppName, aMemInfo->field.free,
+             aMemInfo->field.cached);
         continue;
       }
 
@@ -757,8 +774,14 @@ public:
    * processes other than try-to-keep ones, unless only try-to-keeps
    * ones are left.
    */
-  static bool KillOneProc(KilleeType aType, bool aSwapSensetive) {
+  static bool KillOneProc(KilleeType aType, bool aSwapSensetive,
+                          const meminfo* aMemInfo) {
     bool success = false;
+
+    if (aMemInfo == nullptr) {
+      return success;
+    }
+
     timespec tm;
     // Consecutive kills should be longer than |min_kill_interval| seconds.
     clock_gettime(CLOCK_MONOTONIC_COARSE, &tm);
@@ -778,7 +801,7 @@ public:
       DumpProcessesInfo(&procs);
     }
 
-    auto proc = FindBestProcToKill(&procs, aType, aSwapSensetive);
+    auto proc = FindBestProcToKill(&procs, aType, aSwapSensetive, aMemInfo);
     if (proc == nullptr) {
       LOGD("There is no proper process to kill!\n");
       return success;
@@ -1173,9 +1196,7 @@ void WatchMemPressure() {
     bool killed = false;
     union meminfo mi;
 
-    if (MemInfoParse(&mi) < 0) {
-      LOGI("Failed to get free memory to parse meminfo!");
-    }
+    ASSERT(MemInfoParse(&mi), "Failed to get free memory to parse meminfo!");
 
     mpcounter->Add(cnt);
     double mem_pressure_avg = mpcounter->Average();
@@ -1204,12 +1225,12 @@ void WatchMemPressure() {
       LOGD("mi.field.free_swap: %" PRIi64 " KB", mi.field.free_swap);
       LOGD("mi.field.total_swap: %" PRIi64 " KB", mi.field.total_swap);
 
-      if ((killed = ProcessKiller::KillOneProc(BACKGROUND, true))) {
+      if ((killed = ProcessKiller::KillOneProc(BACKGROUND, true, &mi))) {
         LOGD("Swap free is low and kills background app successfully\n");
-      } else if ((killed = ProcessKiller::KillOneProc(TRY_TO_KEEP, true))) {
+      } else if ((killed = ProcessKiller::KillOneProc(TRY_TO_KEEP, true, &mi))) {
         LOGD("Swap free is low and kills try_to_keep app successfully\n");
       } else if (swap_free_percent < swap_free_hard_threshold) {
-        if ((killed = ProcessKiller::KillOneProc(FOREGROUND, true))) {
+        if ((killed = ProcessKiller::KillOneProc(FOREGROUND, true, &mi))) {
           LOGD("Swap free is extreme low and kills foreground app successfully\n");
         } else {
           LOGI("Swap free is extreme low but no app could be killed\n");
@@ -1230,12 +1251,12 @@ void WatchMemPressure() {
        * don't help, it will kill try_to_keep app.
        */
       if (memory_too_low &&
-          (killed = ProcessKiller::KillOneProc(BACKGROUND, false))) {
+          (killed = ProcessKiller::KillOneProc(BACKGROUND, false, &mi))) {
         LOGD("Memory is low and kills background app successully\n");
       } else if (do_gc_cc){
         GCCCKicker::Kick();
       } else if (memory_extreme_low) {
-        if ((killed = ProcessKiller::KillOneProc(TRY_TO_KEEP, false))) {
+        if ((killed = ProcessKiller::KillOneProc(TRY_TO_KEEP, false, &mi))) {
           LOGD("Memory is extreme low and kills try_to_keep app successfully\n");
         } else { // Failed to kill try_to_keep apps.
           LOGI("Memory is extreme low but no app could be killed\n")
@@ -1323,14 +1344,33 @@ main() {
   property_get("ro.b2gkillerd.swap_free_hard_threshold", buf, "0.20");
   swap_free_hard_threshold = atof(buf);
 
+  char* str;
+  char* saveptr;
+  int i;
+  property_get("ro.b2gkillerd.mem_free_low_watermark", buf, "2147483647,8192,8192");
+  for (i = 0, str = buf; i < KILLEE_TYPE_NUMS; i++) {
+    mem_free_low_watermark[i] = atoi(strtok_r(str, " ,", &saveptr));
+    str = saveptr;
+  }
+
+  property_get("ro.b2gkillerd.cache_low_watermark", buf, "2147483647,51200,51200");
+  for (i = 0, str = buf; i < KILLEE_TYPE_NUMS; i++) {
+    cache_low_watermark[i] = atoi(strtok_r(str, " ,", &saveptr));
+    str = saveptr;
+  }
+
   LOGI("Reading config: mem_pressure_low_threshold: %f, "
        "mem_pressure_high_threshold: %f, gc_cc_max: %f, gc_cc_min: %f, "
        "dirty_mem_weight: %f, swapped_mem_weight: %f, min_kick_interval: %f, "
        "min_kick_interval: %f, swap_free_soft_threshold: %f, "
-       "swap_free_hard_threshold: %f\n",
+       "swap_free_hard_threshold: %f, mem_free_low_watermark: %d, %d, %d, "
+       "cache_low_watermark: %d, %d, %d\n",
        mem_pressure_low_threshold, mem_pressure_high_threshold, gc_cc_max,
        gc_cc_min, dirty_mem_weight, swapped_mem_weight, min_kick_interval,
-       min_kill_interval, swap_free_soft_threshold, swap_free_hard_threshold);
+       min_kill_interval, swap_free_soft_threshold, swap_free_hard_threshold,
+       mem_free_low_watermark[BACKGROUND], mem_free_low_watermark[TRY_TO_KEEP],
+       mem_free_low_watermark[FOREGROUND], cache_low_watermark[BACKGROUND],
+       cache_low_watermark[TRY_TO_KEEP], cache_low_watermark[FOREGROUND]);
  #endif
 
   if (CheckCgroups()) {
