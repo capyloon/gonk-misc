@@ -16,7 +16,7 @@ PRODUCT_PACKAGES += \
 	api-daemon \
 	bluetoothd \
 	librecovery \
-	gaia \
+	nutria \
 	sources.xml \
 	$(NULL)
 
@@ -62,5 +62,5 @@ ifeq ($(IME_ENGINE), touchpal)
 -include external/libtouchpal/touchpal.mk
 endif
 
-$(call inherit-product-if-exists, gaia/gaia.mk)
+$(call inherit-product-if-exists, nutria/nutria.mk)
 $(call inherit-product-if-exists, external/svox/pico/lang/all_pico_languages.mk)
