@@ -4,6 +4,7 @@ PRODUCT_PACKAGES += \
 	b2g-ps \
 	b2g-procrank \
 	b2g.sh \
+	selinux.sh \
 	b2gkillerd \
 	fakeappops \
 	gfxdebugger \

@@ -3,18 +3,27 @@ import /init.bluetooth.rc
 
 service fakeappops /system/bin/fakeappops
     class main
+    disabled
     user root
 
 service gonkservices /system/bin/gonkservices
     class main
+    disabled
     user root
 
 service gonksched /system/bin/gonksched
     class main
+    disabled
     user root
+
+service selinux /system/bin/selinux.sh
+    class main
+    user root
+    oneshot
 
 service b2g /system/bin/b2g.sh
     class main
+    disabled
     onrestart restart media
 
 service nfcd /system/bin/nfcd
@@ -32,13 +41,15 @@ service radvd /system/bin/radvd -C /data/misc/radvd/radvd.conf \
 
 service api-daemon /system/bin/api-daemon /system/api-daemon/config.toml
     class main
+    disabled
     user root
 
-service b2gkillerd /system/bin/b2gkillerd
-    class core
-    user root
-    disabled
-    writepid /dev/cpuset/system-background/tasks
+# Disable for now since the Teracube doesn't have support for the memcp cgroup
+# service b2gkillerd /system/bin/b2gkillerd
+#    class core
+#    user root
+#    disabled
+#    writepid /dev/cpuset/system-background/tasks
 
 on post-fs-data
     mkdir /data/misc/radvd 0770 system system
@@ -93,3 +104,10 @@ on boot
 
 on property:shell.ready=1
     start b2gkillerd
+
+on property:b2g.permissive=1
+    start fakeappops
+    start gonkservices
+    start gonksched
+    start api-daemon
+    start b2g

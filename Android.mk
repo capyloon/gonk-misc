@@ -36,6 +36,14 @@ LOCAL_MODULE_PATH  := $(TARGET_OUT_EXECUTABLES)
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
+LOCAL_MODULE       := selinux.sh
+LOCAL_MODULE_TAGS  := optional
+LOCAL_MODULE_CLASS := DATA
+LOCAL_SRC_FILES    := selinux.sh
+LOCAL_MODULE_PATH  := $(TARGET_OUT_EXECUTABLES)
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
 LOCAL_MODULE       := api-daemon.sh
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := DATA
@@ -304,6 +312,7 @@ else
 	export HOST_OS="$(HOST_OS)" && \
 	export PRODUCTION_OS_NAME="$(PRODUCTION_OS_NAME)" && \
 	export ENABLE_RSU="$(ENABLE_RSU)" && \
+	export RUSTUP_TOOLCHAIN="stable" && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
 	mkdir -p $(@D) && cp $(GECKO_OBJDIR)/dist/b2g-*.tar.bz2 $@

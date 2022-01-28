@@ -5,6 +5,9 @@ mkdir -p $TMPDIR
 chmod 1777 $TMPDIR
 ulimit -n 8192
 
+# Pixel 3a temporary fixes
+setprop "persist.hwc.powermode" true
+
 # Enable core dumps only on debug builds and if explicitly enabled
 DEBUG=`getprop ro.debuggable`
 if [ "$DEBUG" == "1" ]; then

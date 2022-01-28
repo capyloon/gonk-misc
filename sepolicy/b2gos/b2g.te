@@ -1,0 +1,6 @@
+# Allow init to run selinux.sh and change the selinux mode.
+
+allow init system_file:file execute_no_trans;
+allow toolbox selinuxfs:file { open read write };
+allow toolbox kernel:security setenforce;
+
