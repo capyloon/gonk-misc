@@ -169,7 +169,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_PATH := $(TARGET_OUT)
 include $(BUILD_SYSTEM)/base_rules.mk
 
-B2G_SYSTEM_APPS ?= 0
+B2G_SYSTEM_APPS ?= 1
 USE_PREBUILT_B2G ?= 0
 # Preserve the /system/b2g/defaults as its contents will be populated before this rule.
 PRESERVE_DIRS := defaults
