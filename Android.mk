@@ -312,7 +312,7 @@ else
 	export HOST_OS="$(HOST_OS)" && \
 	export PRODUCTION_OS_NAME="$(PRODUCTION_OS_NAME)" && \
 	export ENABLE_RSU="$(ENABLE_RSU)" && \
-	export RUSTUP_TOOLCHAIN="1.59" && \
+	export RUSTUP_TOOLCHAIN="1.61" && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
 	mkdir -p $(@D) && cp $(GECKO_OBJDIR)/dist/b2g-*.tar.bz2 $@
