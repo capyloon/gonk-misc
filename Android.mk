@@ -177,7 +177,8 @@ ifeq ($(B2G_SYSTEM_APPS), 1)
 PRESERVE_DIRS += webapps
 endif
 
-$(LOCAL_INSTALLED_MODULE) : $(LOCAL_BUILT_MODULE)
+.PHONY: gecko_install
+gecko_install : # gecko
 	@echo Install dir: $(TARGET_OUT)/b2g
 	rm -rf $(filter-out $(addprefix $(TARGET_OUT)/b2g/,$(PRESERVE_DIRS)),$(wildcard $(TARGET_OUT)/b2g/*))
 	mkdir -p $(TARGET_OUT)/b2g/defaults/pref
@@ -219,15 +220,13 @@ GECKO_LIB_DEPS := \
 	android.hardware.wifi.supplicant@1.1.so \
 	android.hardware.wifi.supplicant@1.2.so \
 	android.system.wifi.keystore@1.0.so \
-	libwificond_ipc_shared.so \
 	netd_aidl_interface-V2-cpp.so \
-	netd_event_listener_interface-V1-cpp.so \
 	dnsresolver_aidl_interface-V2-cpp.so \
-	binder_b2g_connectivity_interface-cpp.so \
+	binder_b2g_connectivity_interface-V1-cpp.so \
 	binder_b2g_stub.so \
-	binder_b2g_system_interface-cpp.so \
-	binder_b2g_telephony_interface-cpp.so \
-	binder_b2g_remotesimunlock_interface-cpp.so \
+	binder_b2g_system_interface-V1-cpp.so \
+	binder_b2g_telephony_interface-V1-cpp.so \
+	binder_b2g_remotesimunlock_interface-V1-cpp.so \
 	libc++.so \
 	libbinder.so \
 	libfmq.so \
@@ -240,10 +239,17 @@ GECKO_LIB_DEPS := \
 	libsuspend.so \
 	libsync.so \
 	libhidlbase.so \
-	libvold_binder_shared.so \
 	libttspico.so \
 	libnetdbpf.so \
+	libhidltransport.so \
+	libhwbinder.so \
 	$(NULL)
+
+
+# libttspico.so \
+# libvold_binder_shared.so \
+
+GECKO_APEX_LIB :=
 
 # For APEX_MODULE_LIBS
 ifeq (1,$(filter 1,$(shell echo "$$(( $(PLATFORM_SDK_VERSION) < 29 ))" )))
@@ -260,7 +266,29 @@ GECKO_LIB_DEPS += \
 	$(NULL)
 
 GECKO_MODULE_DEPS += \
-	com.android.runtime
+	com.android.runtime.apex
+
+ifeq (1,$(filter 1,$(shell echo "$$(( $(PLATFORM_SDK_VERSION) >= 33 ))" )))
+
+GECKO_APEX_LIB += com.android.tethering/lib64/libnetworkstats.so
+
+GECKO_LIB_DEPS += \
+	android.hardware.drm@1.1.so \
+	audiopolicy-aidl-cpp.so \
+	binder_b2g_connectivity_interface-V1-cpp.so \
+	binder_b2g_system_interface-V1-cpp.so \
+	binder_b2g_telephony_interface-V1-cpp.so \
+	binder_b2g_remotesimunlock_interface-V1-cpp.so \
+	libactivitymanager_aidl.so \
+	libaudiopolicyservice.so \
+	libc.so \
+	libmediadrm.so \
+	libinput.so \
+	netd_aidl_interface-V10-cpp.so \
+	oemnetd_aidl_interface-cpp.so \
+	$(NULL)
+endif
+
 endif
 
 # Currently, OEM hook is only supported on Qualcomm platform
@@ -278,8 +306,10 @@ GECKO_LIB_DEPS += libtouchpal.so
 endif
 PRODUCTION_OS_NAME ?= KAIOS
 
-.PHONY: $(LOCAL_BUILT_MODULE)
-$(LOCAL_BUILT_MODULE): $(TARGET_CRTBEGIN_DYNAMIC_O) $(TARGET_CRTEND_O) $(addprefix $(TARGET_OUT_SHARED_LIBRARIES)/,$(GECKO_LIB_DEPS)) $(GECKO_LIB_STATIC) $(GECKO_MODULE_DEPS)
+
+
+# .PHONY: $(LOCAL_BUILT_MODULE)
+$(LOCAL_BUILT_MODULE): $(TARGET_CRTBEGIN_DYNAMIC_O) $(TARGET_CRTEND_O) $(addprefix $(TARGET_OUT_SHARED_LIBRARIES)/,$(GECKO_LIB_DEPS)) $(GECKO_LIB_STATIC) $(addprefix $(TARGET_OUT)/apex/, $(GECKO_MODULE_DEPS)) $(addprefix $(PRODUCT_OUT)/apex/, $(GECKO_APEX_LIB))
 ifeq ($(USE_PREBUILT_B2G),1)
 	@echo -e "\033[0;33m ==== Use prebuilt gecko ==== \033[0m";
 	mkdir -p $(@D) && cp $(abspath $(PREFERRED_B2G)) $@
@@ -322,6 +352,7 @@ endif
 buildsymbols:
 	$(MAKE) -C $(GECKO_OBJDIR) $@ TARGET_OUT_UNSTRIPPED="$(abspath $(TARGET_OUT_UNSTRIPPED))"
 
+DISABLE_SOURCES_XML ?= true
 # Include a copy of the repo manifest that has the revisions used
 ifneq ($(DISABLE_SOURCES_XML),true)
 ifneq (,$(realpath .repo/manifest.xml))
