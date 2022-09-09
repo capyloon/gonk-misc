@@ -155,7 +155,7 @@ ProcessList::processes_classify()
        it != processes.end(); ++it) {
     if ((*it)->exe() == "/system/b2g/b2g" ||
 	(*it)->exe() == "/system/bin/api-daemon" ||
-	(*it)->exex() == "/system/bin/ipfsd") {
+	(*it)->exe() == "/system/bin/ipfsd") {
       m_unordered_b2g_processes.push_back(*it);
       (*it)->set_lite_meminfo(false);
     } else if ((*it)->exe_exist()){
