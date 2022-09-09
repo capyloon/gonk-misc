@@ -18,6 +18,7 @@ PRODUCT_PACKAGES += \
 	librecovery \
 	nutria \
 	sources.xml \
+	ipfsd \
 	$(NULL)
 
 

@@ -78,8 +78,9 @@ ProcessList::main_process()
   for (vector<Process*>::const_iterator it = processes.begin();
        it != processes.end(); ++it) {
 
-    // The api-daemon is not considered as the main process.
-    if ((*it)->exe() == "/system/bin/api-daemon") {
+    // The api-daemon and ipfsd are not considered as the main process.
+    if ((*it)->exe() == "/system/bin/api-daemon" ||
+	(*it)->exe() == "/system/bin/ipfsd") {
 	    continue;
     }
 
@@ -147,13 +148,14 @@ ProcessList::processes_classify()
   // every process on the system.  It's a bit faster just to look for processes
   // whose |exe|s are "/system/b2g/b2g".
   // As an added bonus, this will work properly with nested content processes.
-  // We also add the api-daemon and updater-daemon process to the our list of
+  // We also add the api-daemon and ipfsd processes to the our list of
   // interesting processes.
   const vector<Process*>& processes = all_processes();
   for (vector<Process*>::const_iterator it = processes.begin();
        it != processes.end(); ++it) {
     if ((*it)->exe() == "/system/b2g/b2g" ||
-	(*it)->exe() == "/system/bin/api-daemon") {
+	(*it)->exe() == "/system/bin/api-daemon" ||
+	(*it)->exex() == "/system/bin/ipfsd") {
       m_unordered_b2g_processes.push_back(*it);
       (*it)->set_lite_meminfo(false);
     } else if ((*it)->exe_exist()){

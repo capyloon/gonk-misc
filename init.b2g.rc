@@ -44,6 +44,11 @@ service api-daemon /system/bin/api-daemon /system/api-daemon/config.toml
     disabled
     user root
 
+service ipfsd /system/bin/ipfsd --cfg /system/ipfsd/config.toml
+    class main
+    disabled
+    user system
+
 # Disable for now since the Teracube doesn't have support for the memcp cgroup
 # service b2gkillerd /system/bin/b2gkillerd
 #    class core
@@ -111,3 +116,5 @@ on property:b2g.permissive=1
     start gonksched
     start api-daemon
     start b2g
+    start ipfsd
+
