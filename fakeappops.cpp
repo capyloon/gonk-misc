@@ -32,20 +32,35 @@ public:
     static const char *getServiceName() { return "appops"; }
 
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName);
+#if ANDROID_VERSION >= 33
+    virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName,
+		                  const std::optional<String16>& attributionTag, bool shouldCollectAsyncNotedOp,
+				  const String16& message, bool shouldCollectMessage);
+    virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
+		                 const String16& packageName, const std::optional<String16>& attributionTag);
+    virtual bool shouldCollectNotes(int32_t opCode) { (void)opCode; return false; }
+    virtual void setCameraAudioRestriction(int32_t mode) { (void)mode; }
+#else
     virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName);
-    virtual int32_t startOperation(int32_t code, int32_t uid, const String16& packageName);
     virtual void finishOperation(int32_t code, int32_t uid, const String16& packageName);
+#endif
+    virtual int32_t startOperation(int32_t code, int32_t uid, const String16& packageName);
 #if ANDROID_VERSION >= 29
+#if ANDROID_VERSION >= 33
+    virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
+		                   const String16& packageName, const std::optional<String16>& attributionTag,
+				   bool startIfModeDefault, bool shouldCollectAsyncNotedOp, const String16& message,
+			           bool shouldCollectMessage);
+#else
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
             const String16& packageName, bool startIfModeDefault);
+#endif
     virtual int32_t checkAudioOperation(int32_t code, int32_t usage, int32_t uid,
             const String16& packageName);
 #else
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
             const String16& packageName);
 #endif
-    virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName);
     virtual sp<IBinder> getToken(const sp<IBinder>& clientToken);
     virtual void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback);
@@ -75,6 +90,31 @@ FakeAppOpsService::checkOperation(int32_t code, int32_t uid, const String16& pac
     return MODE_ALLOWED;
 }
 
+#if ANDROID_VERSION >= 33
+int32_t
+FakeAppOpsService::noteOperation(int32_t code, int32_t uid, const String16& packageName,
+           	                 const std::optional<String16>& attributionTag, bool shouldCollectAsyncNotedOp,
+			         const String16& message, bool shouldCollectMessage) {
+    (void)code;
+    (void)uid;
+    (void)packageName;
+    (void)attributionTag;
+    (void)shouldCollectAsyncNotedOp;
+    (void)message;
+    (void)shouldCollectMessage;
+
+    return MODE_ALLOWED;
+}
+void
+FakeAppOpsService::finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
+          		           const String16& packageName, const std::optional<String16>& attributionTag) {
+    (void)token;
+    (void)code;
+    (void)uid;
+    (void)packageName;
+    (void)attributionTag;
+}
+#else
 int32_t
 FakeAppOpsService::noteOperation(int32_t code, int32_t uid, const String16& packageName)
 {
@@ -84,6 +124,17 @@ FakeAppOpsService::noteOperation(int32_t code, int32_t uid, const String16& pack
 
     return MODE_ALLOWED;
 }
+
+void
+FakeAppOpsService::finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
+                 		   const String16& packageName)
+{
+    (void)token;
+    (void)code;
+    (void)uid;
+    (void)packageName;
+}
+#endif
 
 int32_t
 FakeAppOpsService::startOperation(int32_t code, int32_t uid, const String16& packageName)
@@ -96,6 +147,25 @@ FakeAppOpsService::startOperation(int32_t code, int32_t uid, const String16& pac
 }
 
 #if ANDROID_VERSION >= 29
+#if ANDROID_VERSION >= 33
+int32_t
+FakeAppOpsService::startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
+		                  const String16& packageName, const std::optional<String16>& attributionTag,
+			          bool startIfModeDefault, bool shouldCollectAsyncNotedOp, const String16& message,
+		                  bool shouldCollectMessage) {
+    (void)token;
+    (void)code;
+    (void)uid;
+    (void)packageName;
+    (void)attributionTag;
+    (void)startIfModeDefault;
+    (void)shouldCollectAsyncNotedOp;
+    (void)message;
+    (void)shouldCollectMessage;
+
+    return MODE_ALLOWED;
+}
+#else
 int32_t
 FakeAppOpsService::startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
     const String16& packageName, bool startIfModeDefault)
@@ -108,6 +178,7 @@ FakeAppOpsService::startOperation(const sp<IBinder>& token, int32_t code, int32_
 
     return MODE_ALLOWED;
 }
+#endif
 
 int32_t
 FakeAppOpsService::checkAudioOperation(int32_t code, int32_t usage, int32_t uid,
@@ -133,24 +204,6 @@ FakeAppOpsService::startOperation(const sp<IBinder>& token, int32_t code, int32_
     return MODE_ALLOWED;
 }
 #endif
-
-void
-FakeAppOpsService::finishOperation(int32_t code, int32_t uid, const String16& packageName)
-{
-    (void)code;
-    (void)uid;
-    (void)packageName;
-}
-
-void
-FakeAppOpsService::finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-    const String16& packageName)
-{
-    (void)token;
-    (void)code;
-    (void)uid;
-    (void)packageName;
-}
 
 sp<IBinder>
 FakeAppOpsService::getToken(const sp<IBinder>& clientToken)

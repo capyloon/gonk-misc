@@ -42,7 +42,11 @@ public:
 #if ANDROID_VERSION >= 29
     virtual int requestPriority(int32_t pid, int32_t tid,
                     int32_t prio, bool isForApp, bool asynchronous);
+#if ANDROID_VERSION >= 33
+    virtual int requestCpusetBoost(bool enable, const sp<IBinder>& client);
+#else
     virtual int requestCpusetBoost(bool enable, const sp<IInterface>& client);
+#endif
 #else
     virtual int requestPriority(int32_t pid, int32_t tid, int32_t prio, bool async);
 #endif
@@ -111,9 +115,13 @@ GonkSchedulePolicyService::requestPriority(int32_t pid, int32_t tid, int32_t pri
 
     return requestPriority(pid, tid, prio);
 }
-
+#if ANDROID_VERSION >= 33
+int
+GonkSchedulePolicyService::requestCpusetBoost(bool enable, const sp<IBinder>& client)
+#else
 int
 GonkSchedulePolicyService::requestCpusetBoost(bool enable, const sp<IInterface>& client)
+#endif
 {
     (void)enable;
     (void)client;

@@ -12,7 +12,7 @@
 #include <android/hardware/ISensorPrivacyManager.h>
 #include <binder/BinderService.h>
 #include <binder/IPCThreadState.h>
-#include <binder/IProcessInfoService.h>
+#include <IProcessInfoService.h>
 #include <binder/IServiceManager.h>
 #include <binder/ProcessState.h>
 
@@ -36,10 +36,18 @@ public:
     virtual ~FakeSensorPrivacyService();
     static const char *getServiceName() { return "sensor_privacy"; }
 
+    virtual Status supportsSensorToggle(int32_t toggleType, int32_t sensor, bool* _aidl_return);
     virtual Status addSensorPrivacyListener(const sp<hardware::ISensorPrivacyListener>& listener);
+    virtual Status addToggleSensorPrivacyListener(const sp<hardware::ISensorPrivacyListener>& listener);
     virtual Status removeSensorPrivacyListener(const sp<hardware::ISensorPrivacyListener>& listener);
+    virtual Status removeToggleSensorPrivacyListener(const sp<hardware::ISensorPrivacyListener>& listener);
     virtual Status isSensorPrivacyEnabled(bool* _aidl_return);
+    virtual Status isCombinedToggleSensorPrivacyEnabled(int32_t sensor, bool* _aidl_return);
+    virtual Status isToggleSensorPrivacyEnabled(int32_t toggleType, int32_t sensor, bool* _aidl_return);
     virtual Status setSensorPrivacy(bool enable);
+    virtual Status setToggleSensorPrivacy(int32_t userId, int32_t source, int32_t sensor, bool enable);
+    virtual Status setToggleSensorPrivacyForProfileGroup(int32_t userId, int32_t source, int32_t sensor, bool enable);
+
 
     virtual status_t onTransact(uint32_t code, const Parcel& data, Parcel* reply,
                                 uint32_t flags) override;
@@ -53,8 +61,30 @@ FakeSensorPrivacyService::FakeSensorPrivacyService()
 FakeSensorPrivacyService::~FakeSensorPrivacyService() {
 }
 
+Status FakeSensorPrivacyService::supportsSensorToggle(int32_t toggleType, int32_t sensor, bool* _aidl_return) {
+    (void)toggleType;
+    (void)sensor;
+    *_aidl_return = false;
+
+    return Status::ok();
+}
+
+Status
+FakeSensorPrivacyService::addToggleSensorPrivacyListener(const sp<hardware::ISensorPrivacyListener>& listener) {
+    (void)listener;
+
+    return Status::ok();
+}
+
 Status
 FakeSensorPrivacyService::addSensorPrivacyListener(const sp<hardware::ISensorPrivacyListener>& listener) {
+    (void)listener;
+
+    return Status::ok();
+}
+
+Status
+FakeSensorPrivacyService::removeToggleSensorPrivacyListener(const sp<hardware::ISensorPrivacyListener>& listener) {
     (void)listener;
 
     return Status::ok();
@@ -81,26 +111,81 @@ FakeSensorPrivacyService::setSensorPrivacy(bool enable) {
 
     return Status::ok();
 }
+    
+Status
+FakeSensorPrivacyService::isCombinedToggleSensorPrivacyEnabled(int32_t sensor, bool* _aidl_return) {
+    (void)sensor;
+
+    *_aidl_return = false;
+
+    return Status::ok();
+}
+
+Status
+FakeSensorPrivacyService::isToggleSensorPrivacyEnabled(int32_t toggleType, int32_t sensor, bool* _aidl_return) {
+    (void)toggleType;
+    (void)sensor;
+
+    *_aidl_return = false;
+
+    return Status::ok();
+}
+
+Status
+FakeSensorPrivacyService::setToggleSensorPrivacyForProfileGroup(int32_t userId, int32_t source, int32_t sensor, bool enable) {
+    (void)userId;
+    (void)source;
+    (void)sensor;
+    (void)enable;
+
+    return Status::ok();
+}
 
 status_t
 FakeSensorPrivacyService::onTransact(uint32_t code, const Parcel& data, Parcel* reply,
                                    uint32_t flags) {
     switch (code) {
-        case IBinder::FIRST_CALL_TRANSACTION + 0: /* addSensorPrivacyListener */ {
+        case IBinder::FIRST_CALL_TRANSACTION + 0: /* supportsSensorToggle */ {
+            CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
+            bool enabled;
+            int32_t toggleType;
+            int32_t sensor;
+            data.readInt32(&toggleType);
+            data.readInt32(&sensor);
+            Status status(supportsSensorToggle(toggleType, sensor, &enabled));
+            status_t result = status.writeToParcel(reply);
+            reply->writeBool(enabled);
+            return result;
+        }
+        case IBinder::FIRST_CALL_TRANSACTION + 1: /* addSensorPrivacyListener */ {
             CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
             sp<hardware::ISensorPrivacyListener> listener;
             data.readStrongBinder(&listener);
             Status status(addSensorPrivacyListener(listener));
             return status.writeToParcel(reply);
         }
-        case IBinder::FIRST_CALL_TRANSACTION + 1: /* removeSensorPrivacyListener */ {
+        case IBinder::FIRST_CALL_TRANSACTION + 2: /* addToggleSensorPrivacyListener */ {
+            CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
+            sp<hardware::ISensorPrivacyListener> listener;
+            data.readStrongBinder(&listener);
+            Status status(addToggleSensorPrivacyListener(listener));
+            return status.writeToParcel(reply);
+        }
+        case IBinder::FIRST_CALL_TRANSACTION + 3: /* removeSensorPrivacyListener */ {
             CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
             sp<hardware::ISensorPrivacyListener> listener;
             data.readStrongBinder(&listener);
             Status status(removeSensorPrivacyListener(listener));
             return status.writeToParcel(reply);
         }
-        case IBinder::FIRST_CALL_TRANSACTION + 2: /* isSensorPrivacyEnabled */ {
+        case IBinder::FIRST_CALL_TRANSACTION + 4: /* removeToggleSensorPrivacyListener */ {
+            CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
+            sp<hardware::ISensorPrivacyListener> listener;
+            data.readStrongBinder(&listener);
+            Status status(removeToggleSensorPrivacyListener(listener));
+            return status.writeToParcel(reply);
+        }
+        case IBinder::FIRST_CALL_TRANSACTION + 5: /* isSensorPrivacyEnabled */ {
             CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
             bool enabled;
             Status status(isSensorPrivacyEnabled(&enabled));
@@ -108,13 +193,62 @@ FakeSensorPrivacyService::onTransact(uint32_t code, const Parcel& data, Parcel* 
             reply->writeBool(enabled);
             return result;
         }
-        case IBinder::FIRST_CALL_TRANSACTION + 3: /* setSensorPrivacy */ {
+        case IBinder::FIRST_CALL_TRANSACTION + 6: /* isCombinedToggleSensorPrivacyEnabled */ {
+            CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
+            bool enabled;
+            int32_t sensor;
+            data.readInt32(&sensor);
+            Status status(isCombinedToggleSensorPrivacyEnabled(sensor, &enabled));
+            status_t result = status.writeToParcel(reply);
+            reply->writeBool(enabled);
+            return result;
+        }
+        case IBinder::FIRST_CALL_TRANSACTION + 7: /* isToggleSensorPrivacyEnabled */ {
+            CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
+            bool enabled;
+            int32_t toggleType;
+            int32_t sensor;
+            data.readInt32(&toggleType);
+            data.readInt32(&sensor);
+            Status status(isToggleSensorPrivacyEnabled(toggleType, sensor, &enabled));
+            status_t result = status.writeToParcel(reply);
+            reply->writeBool(enabled);
+            return result;
+        }
+        case IBinder::FIRST_CALL_TRANSACTION + 8: /* setSensorPrivacy */ {
             CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
             bool enabled;
             data.readBool(&enabled);
             Status status(setSensorPrivacy(enabled));
             return status.writeToParcel(reply);
         }
+        case IBinder::FIRST_CALL_TRANSACTION + 9: /* setToggleSensorPrivacy */ {
+            CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
+            int32_t userId;
+            int32_t source;
+            int32_t sensor;
+            bool enabled;
+            data.readInt32(&userId);
+            data.readInt32(&source);
+            data.readInt32(&sensor);
+            data.readBool(&enabled);
+            Status status(setToggleSensorPrivacy(userId, source, sensor, enabled));
+            return status.writeToParcel(reply);
+        }
+        case IBinder::FIRST_CALL_TRANSACTION + 10: /* setToggleSensorPrivacyForProfileGroup */ {
+            CHECK_INTERFACE(hardware::ISensorPrivacyManager, data, reply);
+            int32_t userId;
+            int32_t source;
+            int32_t sensor;
+            bool enabled;
+            data.readInt32(&userId);
+            data.readInt32(&source);
+            data.readInt32(&sensor);
+            data.readBool(&enabled);
+            Status status(setToggleSensorPrivacyForProfileGroup(userId, source, sensor, enabled));
+            return status.writeToParcel(reply);
+        }
+
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }

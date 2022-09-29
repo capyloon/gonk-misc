@@ -111,7 +111,8 @@ LOCAL_MODULE       := fakeappops
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_SRC_FILES    := fakeappops.cpp
-LOCAL_CFLAGS := -DANDROID_VERSION=$(PLATFORM_SDK_VERSION)
+LOCAL_CFLAGS       := -DANDROID_VERSION=$(PLATFORM_SDK_VERSION)
+LOCAL_C_INCLUDES   := frameworks/native/libs/permission/include
 LOCAL_SHARED_LIBRARIES := libbinder libutils
 include $(BUILD_EXECUTABLE)
 
@@ -131,6 +132,7 @@ LOCAL_MODULE       := gonkservices
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_SRC_FILES    := gonkservices.cpp
+LOCAL_C_INCLUDES   := frameworks/native/libs/binder/include_processinfo/processinfo
 LOCAL_SHARED_LIBRARIES := libbinder libutils libsensorprivacy
 include $(BUILD_EXECUTABLE)
 
@@ -178,11 +180,11 @@ PRESERVE_DIRS += webapps
 endif
 
 .PHONY: gecko_install
-gecko_install : # gecko
+gecko_install : gecko
 	@echo Install dir: $(TARGET_OUT)/b2g
 	rm -rf $(filter-out $(addprefix $(TARGET_OUT)/b2g/,$(PRESERVE_DIRS)),$(wildcard $(TARGET_OUT)/b2g/*))
 	mkdir -p $(TARGET_OUT)/b2g/defaults/pref
-	cd $(TARGET_OUT) && tar jxvf $(abspath $<)
+	cd $(TARGET_OUT) && tar jxvf $(abspath $(PRODUCT_OUT)/obj/objdir-gecko/dist/b2g-*.0.en-US.linux-android-aarch64.tar.bz2)
 ifneq ($(EXPORT_DEVICE_PREFS),)
 	cp -n $(EXPORT_DEVICE_PREFS)/*.js $(TARGET_OUT)/b2g/defaults/pref/
 endif
@@ -343,6 +345,7 @@ else
 	export PRODUCTION_OS_NAME="$(PRODUCTION_OS_NAME)" && \
 	export ENABLE_RSU="$(ENABLE_RSU)" && \
 	export RUSTUP_TOOLCHAIN="1.61" && \
+	export B2G_DEBUG=1 && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
 	mkdir -p $(@D) && cp $(GECKO_OBJDIR)/dist/b2g-*.tar.bz2 $@
