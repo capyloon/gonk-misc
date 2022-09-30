@@ -169,6 +169,7 @@ LOCAL_MODULE := gecko
 LOCAL_MODULE_CLASS := DATA
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_PATH := $(TARGET_OUT)
+LOCAL_UNINSTALLABLE_MODULE := true
 include $(BUILD_SYSTEM)/base_rules.mk
 
 B2G_SYSTEM_APPS ?= 1
@@ -179,12 +180,11 @@ ifeq ($(B2G_SYSTEM_APPS), 1)
 PRESERVE_DIRS += webapps
 endif
 
-.PHONY: gecko_install
-gecko_install : gecko
+$(LOCAL_INSTALLED_MODULE) : $(LOCAL_BUILT_MODULE)
 	@echo Install dir: $(TARGET_OUT)/b2g
 	rm -rf $(filter-out $(addprefix $(TARGET_OUT)/b2g/,$(PRESERVE_DIRS)),$(wildcard $(TARGET_OUT)/b2g/*))
 	mkdir -p $(TARGET_OUT)/b2g/defaults/pref
-	cd $(TARGET_OUT) && tar jxvf $(abspath $(PRODUCT_OUT)/obj/objdir-gecko/dist/b2g-*.0.en-US.linux-android-aarch64.tar.bz2)
+	cd $(TARGET_OUT) && tar jxvf $(abspath $<)
 ifneq ($(EXPORT_DEVICE_PREFS),)
 	cp -n $(EXPORT_DEVICE_PREFS)/*.js $(TARGET_OUT)/b2g/defaults/pref/
 endif
@@ -308,9 +308,6 @@ GECKO_LIB_DEPS += libtouchpal.so
 endif
 PRODUCTION_OS_NAME ?= KAIOS
 
-
-
-# .PHONY: $(LOCAL_BUILT_MODULE)
 $(LOCAL_BUILT_MODULE): $(TARGET_CRTBEGIN_DYNAMIC_O) $(TARGET_CRTEND_O) $(addprefix $(TARGET_OUT_SHARED_LIBRARIES)/,$(GECKO_LIB_DEPS)) $(GECKO_LIB_STATIC) $(addprefix $(TARGET_OUT)/apex/, $(GECKO_MODULE_DEPS)) $(addprefix $(PRODUCT_OUT)/apex/, $(GECKO_APEX_LIB))
 ifeq ($(USE_PREBUILT_B2G),1)
 	@echo -e "\033[0;33m ==== Use prebuilt gecko ==== \033[0m";
@@ -369,6 +366,7 @@ LOCAL_MODULE       := sources.xml
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := DATA
 LOCAL_MODULE_PATH  := $(TARGET_OUT)
+LOCAL_UNINSTALLABLE_MODULE := true
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
