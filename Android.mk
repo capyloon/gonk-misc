@@ -199,6 +199,7 @@ GECKO_LIB_DEPS := \
 	liblog.so \
 	libmedia.so \
 	libmtp.so \
+	libsensorservice.so \
 	libstagefright.so \
 	libstagefright_omx.so \
 	libsysutils.so \
@@ -241,15 +242,10 @@ GECKO_LIB_DEPS := \
 	libsuspend.so \
 	libsync.so \
 	libhidlbase.so \
-	libttspico.so \
-	libnetdbpf.so \
 	libhidltransport.so \
 	libhwbinder.so \
+	libvold_binder_shared.so \
 	$(NULL)
-
-
-# libttspico.so \
-# libvold_binder_shared.so \
 
 GECKO_APEX_LIB :=
 
