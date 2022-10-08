@@ -13,7 +13,7 @@ PRODUCT_PACKAGES += \
 	gonksched \
 	init.b2g.rc \
 	init.bluetooth.rc \
-	gecko_install \
+	gecko \
 	api-daemon \
 	bluetoothd \
 	librecovery \

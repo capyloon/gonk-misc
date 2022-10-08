@@ -169,7 +169,6 @@ LOCAL_MODULE := gecko
 LOCAL_MODULE_CLASS := DATA
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_PATH := $(TARGET_OUT)
-LOCAL_UNINSTALLABLE_MODULE := true
 include $(BUILD_SYSTEM)/base_rules.mk
 
 B2G_SYSTEM_APPS ?= 1
@@ -178,21 +177,6 @@ USE_PREBUILT_B2G ?= 0
 PRESERVE_DIRS := defaults
 ifeq ($(B2G_SYSTEM_APPS), 1)
 PRESERVE_DIRS += webapps
-endif
-
-$(LOCAL_INSTALLED_MODULE) : $(LOCAL_BUILT_MODULE)
-	@echo Install dir: $(TARGET_OUT)/b2g
-	rm -rf $(filter-out $(addprefix $(TARGET_OUT)/b2g/,$(PRESERVE_DIRS)),$(wildcard $(TARGET_OUT)/b2g/*))
-	mkdir -p $(TARGET_OUT)/b2g/defaults/pref
-	cd $(TARGET_OUT) && tar jxvf $(abspath $<)
-ifneq ($(EXPORT_DEVICE_PREFS),)
-	cp -n $(EXPORT_DEVICE_PREFS)/*.js $(TARGET_OUT)/b2g/defaults/pref/
-endif
-ifneq ($(EXPORT_DEVICE_USER_BUILD_PREFS),)
-	cp -n $(EXPORT_DEVICE_USER_BUILD_PREFS) $(TARGET_OUT)/b2g/defaults/pref/
-endif
-ifneq ($(EXPORT_BUILD_PREFS),)
-	cp -n $(EXPORT_BUILD_PREFS) $(TARGET_OUT)/b2g/defaults/pref/
 endif
 
 GECKO_LIB_DEPS := \
@@ -342,6 +326,19 @@ else
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
 	mkdir -p $(@D) && cp $(GECKO_OBJDIR)/dist/b2g-*.tar.bz2 $@
+	@echo Install dir: $(TARGET_OUT)/b2g
+	rm -rf $(filter-out $(addprefix $(TARGET_OUT)/b2g/,$(PRESERVE_DIRS)),$(wildcard $(TARGET_OUT)/b2g/*))
+	mkdir -p $(TARGET_OUT)/b2g/defaults/pref
+	cd $(TARGET_OUT) && tar jxvf $(abspath $@)
+ifneq ($(EXPORT_DEVICE_PREFS),)
+	cp -n $(EXPORT_DEVICE_PREFS)/*.js $(TARGET_OUT)/b2g/defaults/pref/
+endif
+ifneq ($(EXPORT_DEVICE_USER_BUILD_PREFS),)
+	cp -n $(EXPORT_DEVICE_USER_BUILD_PREFS) $(TARGET_OUT)/b2g/defaults/pref/
+endif
+ifneq ($(EXPORT_BUILD_PREFS),)
+	cp -n $(EXPORT_BUILD_PREFS) $(TARGET_OUT)/b2g/defaults/pref/
+endif
 endif
 
 .PHONY: buildsymbols
@@ -362,7 +359,6 @@ LOCAL_MODULE       := sources.xml
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := DATA
 LOCAL_MODULE_PATH  := $(TARGET_OUT)
-LOCAL_UNINSTALLABLE_MODULE := true
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
@@ -372,8 +368,5 @@ $(LOCAL_BUILT_MODULE):
 	mkdir -p $(@D)
 	$(REPO) manifest -r -o $@
 
-# this dependency ensure the above rule will be executed if module is built
-$(LOCAL_INSTALLED_MODULE) : $(LOCAL_BUILT_MODULE)
-	$(copy-file-to-new-target)
 endif
 endif
