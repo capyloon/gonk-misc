@@ -113,7 +113,7 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_SRC_FILES    := fakeappops.cpp
 LOCAL_CFLAGS       := -DANDROID_VERSION=$(PLATFORM_SDK_VERSION)
 LOCAL_C_INCLUDES   := frameworks/native/libs/permission/include
-LOCAL_SHARED_LIBRARIES := libbinder libutils
+LOCAL_SHARED_LIBRARIES := libbinder libutils libpermission
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)

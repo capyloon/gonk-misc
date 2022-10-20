@@ -1,6 +1,5 @@
-# TODO: fix fakeappops and gonkservices that rely on IProcessInfoService and IAppOpsService
+# TODO: fix gonkservices that rely on IProcessInfoService
 # See https://android.googlesource.com/platform/frameworks/native/+/refs/tags/android-13.0.0_r6/libs/binder/Android.bp#363
-# and https://android.googlesource.com/platform/frameworks/native/+/refs/tags/android-13.0.0_r6/libs/permission/
 PRODUCT_PACKAGES += \
 	ads-sdk \
 	b2g-info \
@@ -20,6 +19,7 @@ PRODUCT_PACKAGES += \
 	nutria \
 	sources.xml \
 	ipfsd \
+	fakeappops \
 	$(NULL)
 
 
