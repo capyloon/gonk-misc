@@ -132,6 +132,16 @@ FakeSensorPrivacyService::isToggleSensorPrivacyEnabled(int32_t toggleType, int32
 }
 
 Status
+FakeSensorPrivacyService::setToggleSensorPrivacy(int32_t userId, int32_t source, int32_t sensor, bool enable) {
+    (void)userId;
+    (void)source;
+    (void)sensor;
+    (void)enable;
+
+    return Status::ok();
+}
+
+Status
 FakeSensorPrivacyService::setToggleSensorPrivacyForProfileGroup(int32_t userId, int32_t source, int32_t sensor, bool enable) {
     (void)userId;
     (void)source;

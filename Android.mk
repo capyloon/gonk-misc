@@ -134,6 +134,7 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_SRC_FILES    := gonkservices.cpp
 LOCAL_C_INCLUDES   := frameworks/native/libs/binder/include_processinfo/processinfo
 LOCAL_SHARED_LIBRARIES := libbinder libutils libsensorprivacy
+LOCAL_STATIC_LIBRARIES := libprocessinfoservice_aidl
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)

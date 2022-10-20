@@ -1,5 +1,3 @@
-# TODO: fix gonkservices that rely on IProcessInfoService
-# See https://android.googlesource.com/platform/frameworks/native/+/refs/tags/android-13.0.0_r6/libs/binder/Android.bp#363
 PRODUCT_PACKAGES += \
 	ads-sdk \
 	b2g-info \
@@ -20,6 +18,7 @@ PRODUCT_PACKAGES += \
 	sources.xml \
 	ipfsd \
 	fakeappops \
+	gonkservices \
 	$(NULL)
 
 
