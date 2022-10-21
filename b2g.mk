@@ -1,3 +1,5 @@
+include gonk-misc/sepolicy/sepolicy.mk
+
 PRODUCT_PACKAGES += \
 	ads-sdk \
 	b2g-info \
