@@ -208,6 +208,7 @@ GECKO_LIB_DEPS := \
 	android.hardware.wifi.supplicant@1.1.so \
 	android.hardware.wifi.supplicant@1.2.so \
 	android.system.wifi.keystore@1.0.so \
+	libwificond_ipc_shared.so \
 	netd_aidl_interface-V2-cpp.so \
 	dnsresolver_aidl_interface-V2-cpp.so \
 	binder_b2g_connectivity_interface-V1-cpp.so \
@@ -323,7 +324,7 @@ else
 	export PRODUCTION_OS_NAME="$(PRODUCTION_OS_NAME)" && \
 	export ENABLE_RSU="$(ENABLE_RSU)" && \
 	export RUSTUP_TOOLCHAIN="1.61" && \
-	export B2G_DEBUG=1 && \
+	export B2G_DEBUG="$(B2G_DEBUG)" && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
 	mkdir -p $(@D) && cp $(GECKO_OBJDIR)/dist/b2g-*.tar.bz2 $@
