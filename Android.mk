@@ -202,6 +202,7 @@ GECKO_LIB_DEPS := \
 	android.hardware.wifi@1.1.so \
 	android.hardware.wifi@1.2.so \
 	android.hardware.wifi@1.3.so \
+	android.hardware.wifi@1.5.so \
 	android.hardware.wifi.hostapd@1.0.so \
 	android.hardware.wifi.hostapd@1.1.so \
 	android.hardware.wifi.supplicant@1.0.so \
@@ -323,7 +324,7 @@ else
 	export HOST_OS="$(HOST_OS)" && \
 	export PRODUCTION_OS_NAME="$(PRODUCTION_OS_NAME)" && \
 	export ENABLE_RSU="$(ENABLE_RSU)" && \
-	export RUSTUP_TOOLCHAIN="1.61" && \
+	export RUSTUP_TOOLCHAIN="1.63" && \
 	export B2G_DEBUG="$(B2G_DEBUG)" && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
