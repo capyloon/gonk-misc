@@ -188,14 +188,18 @@ GECKO_LIB_DEPS := \
 	libstagefright.so \
 	libstagefright_omx.so \
 	libsysutils.so \
+	android.frameworks.stats@1.0.so \
+	android.frameworks.stats-V1-ndk.so \
 	android.hardware.gnss@1.0.so \
 	android.hardware.graphics.composer@2.1.so \
 	android.hardware.graphics.composer@2.2.so \
 	android.hardware.graphics.composer@2.3.so \
 	android.hardware.power@1.0.so \
+	android.hardware.power-V3-cpp.so \
 	android.hardware.radio@1.0.so \
 	android.hardware.radio@1.1.so \
 	android.hardware.vibrator@1.0.so \
+	android.hardware.vibrator-V2-cpp.so \
 	android.hardware.sensors@1.0.so \
 	android.hardware.sensors@2.0.so \
 	android.hardware.wifi@1.0.so \
