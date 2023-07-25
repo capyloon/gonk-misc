@@ -332,6 +332,7 @@ else
 	export ENABLE_RSU="$(ENABLE_RSU)" && \
 	export RUSTUP_TOOLCHAIN="1.66" && \
 	export B2G_DEBUG="$(B2G_DEBUG)" && \
+       export MOZBUILD_STATE_PATH="$(GECKO_OBJDIR)/gecko-state" && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh) && \
 	(cd $(GECKO_PATH) ; $(SHELL) build-b2g.sh package) && \
 	mkdir -p $(@D) && cp $(GECKO_OBJDIR)/dist/b2g-*.tar.bz2 $@
