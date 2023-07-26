@@ -11,6 +11,11 @@ service gonkservices /system/bin/gonkservices
     disabled
     user root
 
+service sensorservice /system/bin/sensorservice
+    class main
+    disabled
+    user root
+
 service gonksched /system/bin/gonksched
     class main
     disabled
@@ -114,6 +119,7 @@ on property:b2g.permissive=1
     start fakeappops
     start gonkservices
     start gonksched
+    start sensorservice
     start api-daemon
     start b2g
     start ipfsd
