@@ -89,10 +89,10 @@ if [ "$JAR_LOG_ENABLED" = "1" ]; then
   export MOZ_JAR_LOG_FILE=/data/local/tmp/jarloader.log
 fi
 
-ENABLE_LOG=`getprop kaios.log.enable`
+ENABLE_LOG=`getprop gecko.log.enabled`
 if [ "$ENABLE_LOG" == "1" ]; then
-  LOG_FILTER=`getprop kaios.log.filter`
-  export NSPR_LOG_MODULES=$LOG_FILTER
+  LOG_FILTER=`getprop gecko.log.filter`
+  export MOZ_LOG=$LOG_FILTER
 fi
 
 if [ -f "/system/bin/fakesurfaceflinger" ]; then
