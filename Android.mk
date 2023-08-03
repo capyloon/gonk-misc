@@ -266,6 +266,7 @@ GECKO_APEX_LIB += com.android.tethering/lib64/libnetworkstats.so
 
 GECKO_LIB_DEPS += \
 	android.hardware.drm@1.1.so \
+	android.hardware.wifi.supplicant-V1-cpp.so \
 	audiopolicy-aidl-cpp.so \
 	binder_b2g_connectivity_interface-V1-cpp.so \
 	binder_b2g_system_interface-V1-cpp.so \
