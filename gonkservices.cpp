@@ -7,9 +7,12 @@
  * owners.
  */
 
+#include <IBatteryStats.h>
 #include <IProcessInfoService.h>
 #include <android/content/pm/BnPackageManagerNative.h>
 #include <android/content/pm/IPackageManagerNative.h>
+#include <android/gui/BnSurfaceComposer.h>
+#include <android/gui/ISurfaceComposer.h>
 #include <android/hardware/ISensorPrivacyListener.h>
 #include <android/hardware/ISensorPrivacyManager.h>
 #include <android/log.h>
@@ -25,6 +28,8 @@
 namespace android {
 
 using namespace android::content;
+using namespace android::gui;
+
 using binder::Status;
 
 class BnSensorPrivacyService
@@ -463,8 +468,10 @@ public:
 
   virtual Status getNamesForUids(const std::vector<int32_t> &uids,
                                  std::vector<::std::string> *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     *_aidl_return = {};
     for (auto i = 0; i < uids.size(); i++) {
+      LOG("uid=%d", uids[i]);
       (*_aidl_return).push_back(""); // All unknown.
     }
     return Status::ok();
@@ -472,6 +479,7 @@ public:
 
   virtual Status getInstallerForPackage(const String16 &packageName,
                                         std::string *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     (void)packageName;
     *_aidl_return = "preload";
     return Status::ok();
@@ -479,6 +487,7 @@ public:
 
   virtual Status getVersionCodeForPackage(const String16 &packageName,
                                           int64_t *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     (void)packageName;
     *_aidl_return = 0; // Unknown code.
     return Status::ok();
@@ -487,6 +496,7 @@ public:
   virtual Status
   isAudioPlaybackCaptureAllowed(const std::vector<::std::string> &packageNames,
                                 std::vector<bool> *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     *_aidl_return = {};
     for (auto i = 0; i < packageNames.size(); i++) {
       (*_aidl_return).push_back(true);
@@ -496,6 +506,7 @@ public:
 
   virtual Status getLocationFlags(const std::string &packageName,
                                   int32_t *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     (void)packageName;
     *_aidl_return = pm::BnPackageManagerNative::LOCATION_SYSTEM;
     return Status::ok();
@@ -503,6 +514,7 @@ public:
 
   virtual Status getTargetSdkVersionForPackage(const String16 &packageName,
                                                int32_t *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     (void)packageName;
     // Use the current SDK version instead??
     *_aidl_return = 0;
@@ -510,11 +522,13 @@ public:
   }
 
   virtual Status getModuleMetadataPackageName(::std::string *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     *_aidl_return = "b2g";
     return Status::ok();
   }
 
   virtual Status getAllPackages(std::vector<std::string> *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     *_aidl_return = {};
     return Status::ok();
   }
@@ -522,12 +536,14 @@ public:
   virtual Status registerPackageChangeObserver(
       const ::android::sp<::android::content::pm::IPackageChangeObserver>
           &observer) {
+    LOG("%s", __FUNCTION__);
     (void)observer;
     return Status::ok();
   }
 
   virtual Status unregisterPackageChangeObserver(
       const sp<pm::IPackageChangeObserver> &observer) {
+    LOG("%s", __FUNCTION__);
     (void)observer;
     return Status::ok();
   }
@@ -536,6 +552,7 @@ public:
   hasSha256SigningCertificate(const std::string &packageName,
                               const std::vector<uint8_t> &certificate,
                               bool *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     (void)packageName;
     (void)certificate;
     *_aidl_return = false;
@@ -544,6 +561,7 @@ public:
 
   virtual Status isPackageDebuggable(const String16 &packageName,
                                      bool *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     (void)packageName;
     *_aidl_return = false;
     return Status::ok();
@@ -551,26 +569,29 @@ public:
 
   virtual Status hasSystemFeature(const String16 &featureName, int32_t version,
                                   bool *_aidl_return) {
-    (void)featureName;
-    (void)version;
+    LOG("%s %s version=%d", __FUNCTION__, String8(featureName).c_str(),
+        version);
     *_aidl_return = false;
     return Status::ok();
   }
 
   virtual Status
   registerStagedApexObserver(const sp<pm::IStagedApexObserver> &observer) {
+    LOG("%s", __FUNCTION__);
     (void)observer;
     return Status::ok();
   }
 
   virtual Status
   unregisterStagedApexObserver(const sp<pm::IStagedApexObserver> &observer) {
+    LOG("%s", __FUNCTION__);
     (void)observer;
     return Status::ok();
   }
 
   virtual Status
   getStagedApexModuleNames(std::vector<std::string> *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     *_aidl_return = {};
     return Status::ok();
   }
@@ -578,9 +599,264 @@ public:
   virtual Status
   getStagedApexInfo(const std::string &moduleName,
                     std::optional<pm::StagedApexInfo> *_aidl_return) {
+    LOG("%s", __FUNCTION__);
     (void)moduleName;
     *_aidl_return = std::nullopt;
     return Status::ok();
+  }
+};
+
+// Fake SurfaceFlinger implementation.
+// Relevant AOSP sources:
+// frameworks/native/libs/gui/aidl/android/gui/ISurfaceComposer.aidl
+// frameworks/native/services/surfaceflinger
+
+class FakeSurfaceFlingerImpl : public gui::BnSurfaceComposer {
+public:
+  FakeSurfaceFlingerImpl() : gui::BnSurfaceComposer() {}
+
+  virtual ~FakeSurfaceFlingerImpl() {}
+
+  Status createDisplay(const std::string &displayName, bool secure,
+                       sp<IBinder> *outDisplay) {
+    LOG("%s", __FUNCTION__);
+    (void)displayName;
+    (void)secure;
+    (void)outDisplay;
+    return Status::ok();
+  }
+
+  Status destroyDisplay(const sp<IBinder> &display) {
+    LOG("%s", __FUNCTION__);
+    (void)display;
+    return Status::ok();
+  }
+
+  Status getPhysicalDisplayIds(std::vector<int64_t> *outDisplayIds) {
+    LOG("%s", __FUNCTION__);
+    std::vector<int64_t> displayIds;
+    displayIds.reserve(1);
+    displayIds.push_back(0);
+    *outDisplayIds = displayIds;
+
+    return Status::ok();
+  }
+
+  Status getPrimaryPhysicalDisplayId(int64_t *outDisplayId) {
+    LOG("%s", __FUNCTION__);
+    (void)outDisplayId;
+    return Status::ok();
+  }
+
+  Status getPhysicalDisplayToken(int64_t displayId, sp<IBinder> *outDisplay) {
+    LOG("%s %ld", __FUNCTION__, displayId);
+    const sp<IBinder> nullToken;
+    *outDisplay = nullToken;
+    return Status::ok();
+  }
+
+  Status setPowerMode(const sp<IBinder> &display, int mode) {
+    LOG("%s", __FUNCTION__);
+    (void)display;
+    (void)mode;
+    return Status::ok();
+  }
+
+  Status getDisplayStats(const sp<IBinder> &display,
+                         gui::DisplayStatInfo *outStatInfo) {
+    LOG("%s", __FUNCTION__);
+    (void)display;
+    (void)outStatInfo;
+    return Status::ok();
+  }
+
+  Status getDisplayState(const sp<IBinder> &display,
+                         gui::DisplayState *outState) {
+    LOG("%s", __FUNCTION__);
+    (void)display;
+    (void)outState;
+    return Status::ok();
+  }
+
+  Status clearBootDisplayMode(const sp<IBinder> &display) {
+    LOG("%s", __FUNCTION__);
+    (void)display;
+    return Status::ok();
+  }
+
+  Status getBootDisplayModeSupport(bool *outMode) {
+    LOG("%s", __FUNCTION__);
+    (void)outMode;
+    return Status::ok();
+  }
+
+  Status setAutoLowLatencyMode(const sp<IBinder> &display, bool on) {
+    LOG("%s", __FUNCTION__);
+    (void)display;
+    (void)on;
+    return Status::ok();
+  }
+
+  Status setGameContentType(const sp<IBinder> &display, bool on) {
+    LOG("%s", __FUNCTION__);
+    (void)display;
+    (void)on;
+    return Status::ok();
+  }
+
+  Status captureDisplay(const DisplayCaptureArgs &,
+                        const sp<IScreenCaptureListener> &) {
+    LOG("%s", __FUNCTION__);
+    return Status::ok();
+  }
+
+  Status captureDisplayById(int64_t, const sp<IScreenCaptureListener> &) {
+    LOG("%s", __FUNCTION__);
+    return Status::ok();
+  }
+
+  Status captureLayers(const LayerCaptureArgs &,
+                       const sp<IScreenCaptureListener> &) {
+    LOG("%s", __FUNCTION__);
+    return Status::ok();
+  }
+
+  Status isWideColorDisplay(const sp<IBinder> &token,
+                            bool *outIsWideColorDisplay) {
+    LOG("%s", __FUNCTION__);
+    (void)token;
+    (void)outIsWideColorDisplay;
+    return Status::ok();
+  }
+
+  Status getDisplayBrightnessSupport(const sp<IBinder> &displayToken,
+                                     bool *outSupport) {
+    LOG("%s", __FUNCTION__);
+    (void)displayToken;
+    (void)outSupport;
+    return Status::ok();
+  }
+
+  Status setDisplayBrightness(const sp<IBinder> &displayToken,
+                              const gui::DisplayBrightness &brightness) {
+    LOG("%s", __FUNCTION__);
+    (void)displayToken;
+    (void)brightness;
+    return Status::ok();
+  }
+
+  Status
+  addHdrLayerInfoListener(const sp<IBinder> &displayToken,
+                          const sp<gui::IHdrLayerInfoListener> &listener) {
+    LOG("%s", __FUNCTION__);
+    (void)displayToken;
+    (void)listener;
+    return Status::ok();
+  }
+
+  Status
+  removeHdrLayerInfoListener(const sp<IBinder> &displayToken,
+                             const sp<gui::IHdrLayerInfoListener> &listener) {
+    LOG("%s", __FUNCTION__);
+    (void)displayToken;
+    (void)listener;
+    return Status::ok();
+  }
+
+  Status notifyPowerBoost(int boostId) {
+    LOG("%s", __FUNCTION__);
+    (void)boostId;
+    return Status::ok();
+  }
+};
+
+class FakeSurfaceFlinger1 : public FakeSurfaceFlingerImpl,
+                            public BinderService<FakeSurfaceFlinger1> {
+public:
+  FakeSurfaceFlinger1() : FakeSurfaceFlingerImpl() {}
+
+  virtual ~FakeSurfaceFlinger1() {}
+
+  static const char *getServiceName() { return "SurfaceFlinger"; }
+};
+
+class FakeSurfaceFlinger2 : public FakeSurfaceFlingerImpl,
+                            public BinderService<FakeSurfaceFlinger2> {
+public:
+  FakeSurfaceFlinger2() : FakeSurfaceFlingerImpl() {}
+
+  virtual ~FakeSurfaceFlinger2() {}
+
+  static const char *getServiceName() { return "SurfaceFlingerAIDL"; }
+};
+
+// Gonk implementation of the batterystats service. See
+// frameworks/base/core/java/com/android/internal/app/IBatteryStats.aidl
+// frameworks/native/libs/binder/include_batterystats/batterystats/IBatteryStats.h
+
+class GonkBatteryStats : public BnBatteryStats,
+                         public BinderService<GonkBatteryStats> {
+public:
+  GonkBatteryStats() : BnBatteryStats() {}
+
+  virtual ~GonkBatteryStats() {}
+
+  static const char *getServiceName() { return "batterystats"; }
+
+  void noteStartSensor(int uid, int sensor) {
+    LOG("%s uid=%d sensor=%d", __FUNCTION__, uid, sensor);
+  }
+
+  void noteStopSensor(int uid, int sensor) {
+    LOG("%s uid=%d sensor=%d", __FUNCTION__, uid, sensor);
+  }
+
+  void noteStartVideo(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteStopVideo(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteStartAudio(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteStopAudio(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteResetVideo() {
+    LOG("%s", __FUNCTION__);
+  }
+
+  void noteResetAudio() {
+    LOG("%s", __FUNCTION__);
+  }
+
+  void noteFlashlightOn(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteFlashlightOff(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteStartCamera(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteStopCamera(int uid) {
+    LOG("%s uid=%d", __FUNCTION__, uid);
+  }
+
+  void noteResetCamera() {
+    LOG("%s", __FUNCTION__);
+  }
+
+  void noteResetFlashlight() {
+    LOG("%s", __FUNCTION__);
   }
 };
 
@@ -594,6 +870,11 @@ int main(int argc, char **argv) {
   android::FakeSensorPrivacyService::instantiate();
   android::GonkProcessInfoService::instantiate();
   android::GonkPackageManagerNative::instantiate();
+
+  android::FakeSurfaceFlinger1::instantiate();
+  android::FakeSurfaceFlinger2::instantiate();
+
+  android::GonkBatteryStats::instantiate();
 
   android::ProcessState::self()->startThreadPool();
   LOG("startThreadPool ok");

@@ -132,9 +132,25 @@ LOCAL_MODULE       := gonkservices
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_SRC_FILES    := gonkservices.cpp
-LOCAL_C_INCLUDES   := frameworks/native/libs/binder/include_processinfo/processinfo \
-                      out/soong/.intermediates/frameworks/native/libs/binder/packagemanager_aidl-cpp-source/gen/include
-LOCAL_SHARED_LIBRARIES := liblog libbinder libutils libsensorprivacy packagemanager_aidl-cpp
+LOCAL_C_INCLUDES   := frameworks/native/libs/binder/include_batterystats/batterystats \
+                      frameworks/native/libs/binder/include_processinfo/processinfo \
+					  frameworks/native/libs/nativewindow/include \
+					  frameworks/native/libs/arect/include \
+					  frameworks/native/libs/nativebase/include \
+					  frameworks/native/libs/binder/ndk/include_ndk \
+					  frameworks/native/libs/math/include \
+					  system/libhidl/base/include \
+					  system/libfmq/base \
+					  out/soong/.intermediates/hardware/interfaces/graphics/common/1.2/android.hardware.graphics.common@1.2_genc++_headers/gen \
+					  out/soong/.intermediates/hardware/interfaces/graphics/common/1.1/android.hardware.graphics.common@1.1_genc++_headers/gen \
+					  out/soong/.intermediates/hardware/interfaces/graphics/common/1.0/android.hardware.graphics.common@1.0_genc++_headers/gen \
+					  out/soong/.intermediates/hardware/interfaces/graphics/common/aidl/android.hardware.graphics.common-V3-ndk-source/gen/include \
+                      out/soong/.intermediates/frameworks/native/libs/binder/packagemanager_aidl-cpp-source/gen/include \
+					  out/soong/.intermediates/frameworks/native/libs/gui/libgui_aidl_static/android_arm64_armv8-2a_cortex-a55_static/gen/aidl
+LOCAL_SHARED_LIBRARIES := libgui liblog libbinder libutils \
+                          libsensorprivacy packagemanager_aidl-cpp \
+						  libbatterystats_aidl \
+						  android.hardware.graphics.composer3-V1-ndk
 LOCAL_STATIC_LIBRARIES := libprocessinfoservice_aidl
 include $(BUILD_EXECUTABLE)
 
