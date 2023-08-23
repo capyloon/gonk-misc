@@ -67,3 +67,5 @@ endif
 
 $(call inherit-product-if-exists, nutria/nutria.mk)
 $(call inherit-product-if-exists, external/svox/pico/lang/all_pico_languages.mk)
+$(call inherit-product-if-exists, external/moztt/fonts.mk)
+
